@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>공간 배치 스튜디오</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Space+Grotesk:wght@500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: 시공 전 실측 노트처럼 정확하고 담백하게
+   IDEA: 설계 사무소 도면 데이터시트 — 왼쪽은 실측·자료, 오른쪽은 매장 모형
+   PICTURE: 실시간 3D 매장 모형이 화면 대부분을 채움
+   COLOUR+TYPE: 코발트 타이틀 띠, 흰 패널, 연코발트 존 / Space Grotesk 숫자 + Noto Sans KR
+   LAYOUT: 좁은 타이틀 띠, 380px 입력 패널 + 큰 3D 뷰, 900px 이하에선 뷰가 위로 */
+:root{color-scheme:light dark;--bg:light-dark(#f3f4f8,#0a0d18);--panel:light-dark(#fff,#121626);--ink:light-dark(#0d1020,#e8ebf5);--mut:light-dark(#5a6072,#9aa1b8);--line:light-dark(#dde1ea,#262c44);--zone:light-dark(#eef2ff,#182042);--co:light-dark(#1240e0,#6d8bff);--stage:light-dark(#dfe3ec,#1b2034);--warn:light-dark(#b42318,#ff8a7a)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Noto Sans KR",system-ui,sans-serif;overflow-x:clip}
+.num,input[type=number]{font-family:"Space Grotesk","Noto Sans KR",sans-serif;font-variant-numeric:tabular-nums}
+.strip{background:#1240e0;color:#fff;padding:12px max(2vw,16px);display:flex;gap:16px;align-items:baseline;flex-wrap:wrap}
+.strip h1{margin:0;font:600 22px/1.1 "Space Grotesk","Noto Sans KR",sans-serif}
+.strip p{margin:0;font-size:14px;opacity:.88}
+.app{display:grid;grid-template-columns:minmax(0,390px) minmax(0,1fr);height:calc(100vh - 50px);min-height:560px}
+.panel{order:-1;overflow-y:auto;border-right:1px solid var(--line);background:var(--panel)}
+.card{padding:18px 20px;border-bottom:1px solid var(--line)}
+.card h2{margin:0 0 12px;font-size:16px;font-weight:700}
+.small{font-size:13px;color:var(--mut);margin:8px 0 0}
+.drops{display:grid;gap:8px}
+.drop{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;align-items:center;border:1.5px dashed var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;background:var(--zone)}
+.drop:hover,.drop.over{border-color:var(--co)}
+.drop:focus-within{outline:2px solid var(--co);outline-offset:2px}
+.drop input{position:absolute;width:1px;height:1px;opacity:0}
+.drop .ic{grid-row:span 2;width:34px;height:34px;border-radius:8px;background:var(--co);display:grid;place-items:center}
+.drop b{font-size:15px}.drop span{font-size:13px;color:var(--mut)}
+.thumbs{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}.thumbs:empty{display:none}
+.thumbs img{width:52px;height:52px;object-fit:cover;border-radius:6px;border:1px solid var(--line)}
+button{font:inherit;font-size:15px;min-height:44px;padding:0 14px;border-radius:9px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+button:hover{border-color:var(--co)}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--co);outline-offset:2px}
+button:disabled{opacity:.45;cursor:default}
+.primary{background:var(--co);color:#fff;border-color:transparent;width:100%;font-weight:700;margin-top:12px}
+:root .primary{color:light-dark(#fff,#0a0d18)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button.on{background:var(--co);color:light-dark(#fff,#0a0d18);border-color:transparent;font-weight:700}
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px}
+label.f{display:grid;gap:4px;font-size:13px;color:var(--mut)}
+input,select{font:inherit;font-size:16px;min-height:44px;padding:0 10px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);width:100%}
+.cols{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:6px}
+.cols li{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:14px;background:var(--zone);border-radius:8px;padding:4px 4px 4px 12px}
+.cols li button{min-height:36px;padding:0 10px}
+.addcol{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-top:8px}
+.row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}.row>*{flex:1}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.stats div{background:var(--panel);padding:10px 12px}
+.stats .v{font:600 28px/1.1 "Space Grotesk",sans-serif;white-space:nowrap}.stats .v small{font-size:14px;color:var(--mut);margin-left:3px}
+.stats .k{font-size:13px;color:var(--mut)}
+.stats .big{grid-column:1/-1;background:var(--zone)}.stats .big .v{font-size:40px;color:var(--co)}
+.warn{color:var(--warn);font-size:14px;margin:10px 0 0}
+dl.lease{display:grid;grid-template-columns:6.5em 1fr;gap:6px 10px;margin:0;font-size:14px}dl.lease dt{color:var(--mut)}dl.lease dd{margin:0}
+ul.notes{margin:0;padding-left:18px;font-size:14px;display:grid;gap:6px}
+h3{font-size:14px;margin:14px 0 6px}
+.view{position:relative;background:var(--stage);overflow:hidden}
+.view canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
+.tools{position:absolute;top:12px;left:12px;right:12px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
+.tools>*{pointer-events:auto;box-shadow:0 1px 3px #0002}
+.seg{display:flex;border-radius:9px;overflow:hidden;border:1px solid var(--line)}
+.seg button{border:0;border-radius:0}.seg button.on{background:var(--co);color:light-dark(#fff,#0a0d18)}
+.selbar{position:absolute;left:50%;bottom:44px;transform:translateX(-50%);display:flex;gap:8px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px 6px 6px 14px;box-shadow:0 4px 16px #0003;max-width:calc(100% - 24px);flex-wrap:wrap}
+.selbar b{font-size:15px;white-space:nowrap}
+.hint{position:absolute;left:12px;right:12px;bottom:8px;margin:0;font-size:13px;color:var(--mut);text-align:center;pointer-events:none}
+.busy{display:inline-block;width:12px;height:12px;border:2px solid var(--co);border-right-color:transparent;border-radius:50%;animation:sp 0.8s linear infinite;vertical-align:-1px;margin-right:6px}
+@keyframes sp{to{transform:rotate(1turn)}}
+@media(prefers-reduced-motion:reduce){.busy{animation:none}}
+@media(max-width:900px){.app{grid-template-columns:minmax(0,1fr);height:auto}.view{height:62vh;min-height:380px}.panel{order:0;border-right:0}.strip p{display:none}}
+</style></head><body>
+<header class="strip"><h1>공간 배치 스튜디오</h1><p>철거 전 사진·도면·임대차계약서를 올리고 업종을 고르면, 가구를 배치해 3D로 보여줍니다.</p></header>
+<main class="app">
+<section class="view" id="view" aria-label="3D 매장 모형">
+  <div class="tools">
+    <div class="seg" role="group" aria-label="시점"><button data-v="persp" class="on">3D</button><button data-v="top">위에서</button></div>
+    <button id="wallBtn">벽 올리기</button>
+    <button id="planBtn" hidden>도면 끄기</button>
+    <button id="undo" disabled>되돌리기</button>
+  </div>
+  <div class="selbar" id="selbar" hidden><b id="selName"></b><button id="rot">회전</button><button id="dup">복제</button><button id="del">삭제</button></div>
+  <p class="hint">가구를 끌어서 옮기기 · R 회전 · Delete 삭제 · 빈 곳을 끌면 시점 회전</p>
+</section>
+<aside class="panel">
+  <section class="card">
+    <h2>1. 현장 자료</h2>
+    <div class="drops">
+      <label class="drop" data-k="plan"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M3 3h18v18H3zM3 12h8V3M15 21v-6h6"/></svg></span><b>도면</b><span>평면도·실측 스케치 이미지</span><input type="file" accept="image/*,application/pdf"><div class="thumbs"></div></label>
+      <label class="drop" data-k="photos"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M3 7h4l2-3h6l2 3h4v13H3z"/><circle cx="12" cy="13" r="4"/></svg></span><b>철거 전 사진</b><span>여러 장 가능 · 기둥, 창, 배관 확인용</span><input type="file" accept="image/*" multiple><div class="thumbs"></div></label>
+      <label class="drop" data-k="lease"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M6 2h9l5 5v15H6zM14 2v6h6M9 13h8M9 17h6"/></svg></span><b>임대차계약서</b><span>사진·캡처 이미지 · 면적과 용도 확인용</span><input type="file" accept="image/*,application/pdf" multiple><div class="thumbs"></div></label>
+    </div>
+    <p id="fileMsg" class="warn" hidden></p>
+    <div id="aiBox" hidden><button id="aiBtn" class="primary">AI로 자료 분석하고 배치하기</button><p id="aiStatus" class="small" aria-live="polite"></p></div>
+    <p id="aiOff" class="small">AI 연결을 확인하는 중입니다…</p>
+  </section>
+  <section class="card">
+    <h2>2. 업종 컨셉</h2>
+    <div class="chips" id="chips" role="radiogroup" aria-label="업종"></div>
+    <p id="cInfo" class="small"></p>
+  </section>
+  <section class="card">
+    <h2>3. 공간 치수</h2>
+    <div class="fields">
+      <label class="f">가로 (m)<input id="iW" type="number" step="0.1" min="3" max="60"></label>
+      <label class="f">세로 (m)<input id="iD" type="number" step="0.1" min="3" max="60"></label>
+      <label class="f">천장 높이 (m)<input id="iH" type="number" step="0.1" min="2.2" max="8"></label>
+      <label class="f">입구 위치<select id="iDoor"><option value="bottom">아래쪽 벽</option><option value="top">위쪽 벽</option><option value="left">왼쪽 벽</option><option value="right">오른쪽 벽</option></select></label>
+      <label class="f" style="grid-column:1/-1">입구 중심까지 거리 (m, 위쪽 벽·아래쪽 벽은 왼쪽 끝부터, 왼쪽 벽·오른쪽 벽은 위쪽 끝부터)<input id="iOff" type="number" step="0.1" min="0"></label>
+    </div>
+    <h3>기둥</h3>
+    <ul class="cols" id="cols"></ul>
+    <div class="addcol"><input id="cx" type="number" step="0.1" placeholder="x (m)" aria-label="기둥 x"><input id="cz" type="number" step="0.1" placeholder="z (m)" aria-label="기둥 z"><button id="addCol">추가</button></div>
+    <p class="small">x는 왼쪽 벽에서, z는 위쪽 벽에서 잰 거리입니다. 치수를 바꾸면 자동 배치를 새로 합니다.</p>
+    <div class="row"><button id="relayout">다시 자동 배치</button></div>
+  </section>
+  <section class="card">
+    <h2>배치 결과</h2>
+    <div class="stats">
+      <div class="big"><div class="v num" id="stSeats">0</div><div class="k">총 좌석</div></div>
+      <div><div class="v num"><span id="stArea">0</span><small>m²</small></div><div class="k">면적</div></div>
+      <div><div class="v num"><span id="stPy">0</span><small>평</small></div><div class="k">평수</div></div>
+      <div><div class="v num" id="stUnits">0</div><div class="k" id="stUnitsK">테이블</div></div>
+      <div><div class="v num"><span id="stPer">–</span><small>m²</small></div><div class="k">좌석당 면적</div></div>
+    </div>
+    <p class="warn" id="warn" hidden>이 크기에는 기본 테이블이 들어가지 않습니다. 치수나 입구 위치를 확인해 주세요.</p>
+    <h3>가구 추가</h3>
+    <div class="row" style="margin-top:0"><select id="addType" aria-label="추가할 가구"></select><button id="addBtn" style="flex:0 0 auto">추가</button></div>
+    <p class="small" id="sampleNote">예시 공간(12 × 8 m)으로 시작합니다. 자료를 올리면 실제 현장으로 바뀝니다.</p>
+  </section>
+  <section class="card" id="leaseCard" hidden><h2>계약서 요약</h2><dl class="lease" id="lease"></dl><p class="warn" id="leaseWarn" hidden></p></section>
+  <section class="card" id="noteCard" hidden><h2>AI 현장 메모</h2><ul class="notes" id="obs"></ul><h3 id="advH"></h3><ul class="notes" id="adv"></ul></section>
+</aside>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+{
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const S={W:12,D:8,H:3,door:'bottom',off:6,concept:'bbq',cols:[{x:9.2,z:3.4,w:.6,d:.6}],plan:null,planURL:null,photos:[],lease:[],showPlan:true,high:false};
+const CONCEPTS={bbq:['고깃집','테이블마다 배기 덕트, 안쪽 주방과 구획 벽, 입구 옆 계산대'],pizza:['피자집','안쪽에 화덕과 주방 라인, 픽업 카운터, 4인·2인 테이블'],cafe:['카페','바 카운터와 에스프레소 머신, 2인 테이블 위주'],office:['사무실','회의실, 4인 데스크 묶음, 수납장, 안내 데스크와 라운지'],holdem:['홀덤펍','9인 홀덤 테이블과 딜러석, 뒷벽 바 카운터, 칩 교환 데스크, TV']};
+const UNIT={office:'데스크 묶음',holdem:'게임 테이블'};
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v)),snap=v=>Math.round(v*10)/10,num=v=>typeof v==='number'&&isFinite(v)&&v>0;
+
+/* ---------- 3D ---------- */
+const view=$('#view');
+const R=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});
+R.setPixelRatio(Math.min(devicePixelRatio,2));R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;R.setClearColor(0,0);
+view.prepend(R.domElement);
+const scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(42,1,.1,300);
+scene.add(new THREE.HemisphereLight(0xffffff,0x80868f,.8));
+const sun=new THREE.DirectionalLight(0xffffff,.7);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.bias=-.0005;scene.add(sun,sun.target);
+const roomG=new THREE.Group(),furnG=new THREE.Group();scene.add(roomG,furnG);
+const MC={},M=(c,o={})=>{const k=c+JSON.stringify(o);return MC[k]||(MC[k]=new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.75,metalness:0},o)))};
+const STEEL={metalness:.55,roughness:.35},GLASS={transparent:true,opacity:.25,roughness:.1};
+function box(g,w,h,d,c,x,y,z,o){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),M(c,o));m.position.set(x,y+h/2,z);m.castShadow=!(o&&o.transparent);m.receiveShadow=true;g.add(m);return m}
+function cyl(g,rt,rb,h,c,x,y,z,o,seg=24){const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg),M(c,o));m.position.set(x,y+h/2,z);m.castShadow=m.receiveShadow=true;g.add(m);return m}
+function chair(g,x,z,face,c='#3b3f46'){const ch=new THREE.Group();box(ch,.42,.05,.42,c,0,.43,0);box(ch,.42,.42,.05,c,0,.48,-.19);for(const[a,b]of[[-.18,-.18],[.18,-.18],[-.18,.18],[.18,.18]])box(ch,.03,.43,.03,'#2a2a2a',a,0,b);ch.position.set(x,0,z);ch.rotation.y=face;g.add(ch)}
+function stool(g,x,z){cyl(g,.18,.18,.06,'#2b2b2b',x,.72,z);cyl(g,.025,.025,.72,'#8a8f96',x,0,z,STEEL,8);cyl(g,.17,.17,.02,'#8a8f96',x,0,z,STEEL)}
+const faceTo=(x,z)=>Math.atan2(-x,-z);
+const WOOD='#a9784f',DWOOD='#5b3b26',LWOOD='#d8b98f';
+const CAT={
+ bbq4:{n:'4인 고기 테이블',w:1.3,d:1.9,s:4,mk(g){box(g,.5,.68,.4,'#333',0,0,0);box(g,1.3,.05,.8,DWOOD,0,.68,0);cyl(g,.24,.2,.07,'#1a1a1a',0,.73,0,{metalness:.5,roughness:.5});cyl(g,.19,.19,.01,'#c0392b',0,.8,0,{emissive:'#6a1a0e'});cyl(g,.13,.32,.22,'#b9bec4',0,1.45,0,STEEL);cyl(g,.12,.12,Math.max(.2,S.H-1.67),'#b9bec4',0,1.67,0,STEEL,16);for(const x of[-.33,.33])for(const z of[-.68,.68])chair(g,x,z,z<0?0:Math.PI,'#7b2d26')}},
+ table4:{n:'4인 테이블',w:1.2,d:1.8,s:4,mk(g){box(g,1.2,.04,.75,LWOOD,0,.72,0);for(const x of[-.55,.55])for(const z of[-.32,.32])box(g,.04,.72,.04,'#333',x,0,z);for(const x of[-.3,.3])for(const z of[-.62,.62])chair(g,x,z,z<0?0:Math.PI)}},
+ table2:{n:'2인 테이블',w:.7,d:1.6,s:2,mk(g){cyl(g,.36,.36,.04,LWOOD,0,.72,0);cyl(g,.04,.04,.72,'#333',0,0,0,{},8);cyl(g,.22,.22,.02,'#333',0,0,0);for(const z of[-.55,.55])chair(g,0,z,z<0?0:Math.PI,'#4a5a52')}},
+ poker:{n:'홀덤 테이블(9인)',w:3.6,d:2.5,s:9,mk(g){box(g,.7,.68,.35,'#222',0,0,0);const r=cyl(g,1,1,.07,'#3a2417',0,.68,0,{},48);r.scale.set(1.25,1,.68);const f=cyl(g,1,1,.075,'#16704a',0,.685,0,{roughness:.95},48);f.scale.set(1.12,1,.56);box(g,.5,.04,.16,'#111',0,.76,-.5);for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,x=Math.cos(a)*1.55,z=Math.sin(a)*1.0;chair(g,x,z,faceTo(x,z),i?'#26262b':'#1240e0')}}},
+ desk4:{n:'4인 데스크',w:2.8,d:2.6,s:4,mk(g){for(const x of[-.7,.7])for(const z of[-.35,.35]){box(g,1.38,.04,.68,'#ece9e2',x,.72,z);box(g,.04,.72,.6,'#8c9099',x-.66,0,z);box(g,.04,.72,.6,'#8c9099',x+.66,0,z);box(g,.56,.34,.03,'#111',x,.84,z<0?-.12:.12);box(g,.06,.1,.06,'#333',x,.76,z<0?-.12:.12);chair(g,x,z<0?-1:1,z<0?0:Math.PI,'#2f3a55')}box(g,2.8,.45,.03,'#9aa7c7',0,.74,0)}},
+ meeting:{n:'회의실',w:4,d:3.5,s:6,mk(g){box(g,4,2.6,.05,'#bcd3ff',0,0,-1.72,GLASS);for(const x of[-1.98,1.98])box(g,.05,2.6,3.5,'#bcd3ff',x,0,0,GLASS);box(g,3,2.6,.05,'#bcd3ff',-.5,0,1.72,GLASS);box(g,4,.08,3.5,'#9aa7c7',0,2.6,0,GLASS);box(g,2.4,.05,1,'#ece9e2',0,.72,0);box(g,.3,.72,.3,'#555',-.8,0,0);box(g,.3,.72,.3,'#555',.8,0,0);for(const x of[-.8,0,.8])for(const z of[-.75,.75])chair(g,x,z,z<0?0:Math.PI,'#2f3a55')}},
+ sofa:{n:'소파',w:2,d:.9,s:3,mk(g){box(g,2,.42,.85,'#5d6b8a',0,0,0);box(g,2,.45,.2,'#53607c',0,.42,-.33);for(const x of[-.93,.93])box(g,.15,.62,.85,'#53607c',x,0,0)}},
+ counter:{n:'계산대·안내 데스크',w:1.7,d:.7,s:0,mk(g){box(g,1.6,1,.6,DWOOD,0,0,0);box(g,1.7,.04,.7,LWOOD,0,1,0);box(g,.32,.24,.05,'#111',.4,1.04,-.1)}},
+ kitchen:{n:'주방 라인',d:.8,s:0,def:{len:3.2},mk(g,o){const L=o.len;const n=Math.max(1,Math.round(L/.8)),u=L/n;for(let i=0;i<n;i++){const x=-L/2+u/2+i*u;if(i===n-1){box(g,u-.02,1.9,.72,'#c9ced4',x,0,0,STEEL);continue}box(g,u-.02,.88,.72,'#c9ced4',x,0,0,STEEL);box(g,u,.03,.75,'#e3e6ea',x,.88,0,STEEL);if(i%2)for(const dx of[-.15,.15])cyl(g,.1,.1,.03,'#222',x+dx,.91,0)}box(g,L-u,.45,.7,'#b9bec4',-u/2,1.85,0,STEEL)}},
+ bar:{n:'바 카운터',d:2.3,s:0,def:{len:4.5},seats:o=>Math.floor(o.len/.65),mk(g,o){const L=o.len;box(g,L,1.9,.35,DWOOD,0,0,-.95);const cs=['#2e7d4f','#b5651d','#8e1b1b','#d9c27a'];for(let x=-L/2+.2;x<L/2-.1;x+=.24)for(const y of[1.1,1.5])cyl(g,.035,.035,.24,cs[Math.round((x+y)*7)%4],x,y,-.82,{roughness:.2},8);box(g,L,1.02,.5,DWOOD,0,0,-.05);box(g,L+.1,.05,.64,LWOOD,0,1.02,-.05);const n=Math.floor(L/.65);for(let i=0;i<n;i++)stool(g,-L/2+.65/2+i*(L/n),.55)}},
+ cafecounter:{n:'카페 카운터',d:1.8,s:0,def:{len:3.5},mk(g,o){const L=o.len;box(g,L,.9,.6,'#e8e1d6',0,0,-.6);box(g,.6,.6,.4,'#c9ced4',-L/2+.5,.9,-.6,STEEL);box(g,L,1,.6,'#efe9df',0,0,.3);box(g,L+.06,.04,.66,'#3c3c3c',0,1,.3);box(g,.7,.42,.5,'#b9bec4',-L/2+.6,1.04,.25,STEEL);box(g,1.1,.45,.55,'#d7e7ff',L/2-.7,1.04,.3,GLASS)}},
+ oven:{n:'피자 화덕',w:1.5,d:1.3,s:0,mk(g){box(g,1.5,.95,1.3,'#8b4a33',0,0,0);const d=new THREE.Mesh(new THREE.SphereGeometry(.68,32,16,0,Math.PI*2,0,Math.PI/2),M('#a85a3c'));d.position.y=.95;d.castShadow=true;g.add(d);box(g,.46,.3,.06,'#120c0a',0,.98,.64);cyl(g,.1,.1,1.1,'#555',0,1.55,-.2,STEEL,12)}},
+ tv:{n:'벽걸이 TV',w:1.5,d:.1,s:0,mk(g){box(g,1.5,.86,.06,'#0b0b0b',0,1.4,0,{roughness:.2});box(g,1.4,.76,.01,'#1d3f8f',0,1.45,.031,{emissive:'#0f2560'})}},
+ plant:{n:'화분',w:.5,d:.5,s:0,mk(g){cyl(g,.22,.17,.4,'#c9c4bb',0,0,0);const s=new THREE.Mesh(new THREE.IcosahedronGeometry(.38,1),M('#3f7d4a'));s.position.y=.8;s.castShadow=true;g.add(s)}},
+ cabinet:{n:'수납장',w:.9,d:.45,s:0,mk(g){box(g,.9,1.8,.45,'#d9d6cf',0,0,0);box(g,.02,1.7,.02,'#999',0,.05,.23)}},
+ partition:{n:'구획 벽',d:.1,s:0,def:{len:3},mk(g,o){box(g,o.len,1.4,.1,'#d6d2ca',0,0,0)}}
+};
+const TABLES=new Set(['bbq4','table4','table2','poker','desk4']);
+const seatOf=i=>{const c=CAT[i.t];return c.seats?c.seats(i.o):c.s};
+const sizeOf=(t,o,r=0)=>{const c=CAT[t];const w=c.w??o.len,d=c.d;return Math.abs(Math.sin(r))>.5?[d,w]:[w,d]};
+
+function label(txt,big){const c=document.createElement('canvas');c.width=256;c.height=72;const x=c.getContext('2d');x.fillStyle='rgba(255,255,255,.92)';x.beginPath();x.roundRect?x.roundRect(4,8,248,56,28):x.rect(4,8,248,56);x.fill();x.fillStyle=big?'#1240e0':'#0d1020';x.font='600 34px "Space Grotesk","Noto Sans KR",sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText(txt,128,37);const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false}));s.scale.set(1.6,.45,1);s.renderOrder=9;return s}
+
+function frame(){const a={bottom:0,top:Math.PI,right:Math.PI/2,left:-Math.PI/2}[S.door],side=S.door==='left'||S.door==='right';const Wl=side?S.D:S.W,Dl=side?S.W:S.D;const off=clamp(S.off,.7,Wl-.7);const dx={bottom:off,top:S.W-off,right:S.D-off,left:off}[S.door];const p={bottom:[0,0],top:[S.W,S.D],right:[0,S.D],left:[S.W,0]}[S.door];furnG.rotation.y=a;furnG.position.set(p[0],0,p[1]);furnG.updateMatrixWorld(true);return{Wl,Dl,dx,off}}
+const toLocal=(x,z)=>furnG.worldToLocal(new THREE.Vector3(x,0,z));
+
+function clearG(g){for(const o of [...g.children]){g.remove(o);o.traverse(m=>{m.geometry&&m.geometry.dispose();if(m.material&&m.material.map){m.material.map.dispose();m.material.dispose()}})}}
+let planTex=null;
+function buildRoom(){clearG(roomG);const{W,D,H}=S,{off}=frame();
+ let fm=M('#cfcac2',{roughness:.95});
+ if(S.planURL&&S.showPlan){if(!planTex||planTex.userData.url!==S.planURL){planTex=new THREE.TextureLoader().load(S.planURL);planTex.userData.url=S.planURL}fm=new THREE.MeshStandardMaterial({map:planTex,roughness:.95})}
+ const fl=new THREE.Mesh(new THREE.PlaneGeometry(W,D).rotateX(-Math.PI/2),fm);fl.position.set(W/2,0,D/2);fl.receiveShadow=true;roomG.add(fl);
+ if(!(S.planURL&&S.showPlan)){const pts=[];for(let x=1;x<W;x++)pts.push(x,.004,0,x,.004,D);for(let z=1;z<D;z++)pts.push(0,.004,z,W,.004,z);const gg=new THREE.BufferGeometry();gg.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));roomG.add(new THREE.LineSegments(gg,new THREE.LineBasicMaterial({color:0x000000,transparent:true,opacity:.09})))}
+ const h=S.high?H:1.1,t=.15,dw=1.2,wc='#f1f0ec';
+ const seg=(ax,a0,a1,fixed,horiz)=>{if(a1-a0<.01)return;const L=a1-a0,m=(a0+a1)/2;horiz?box(roomG,L,h,t,wc,m,0,fixed):box(roomG,t,h,L,wc,fixed,0,m)};
+ const wall=(side,len,fixed,horiz)=>{if(S.door===side){const o=clamp(off,.7,len-.7);seg(0,-t,o-dw/2,fixed,horiz);seg(0,o+dw/2,len+t,fixed,horiz);if(S.high&&h>2.2){const L=dw;horiz?box(roomG,L,h-2.2,t,wc,o,2.2,fixed):box(roomG,t,h-2.2,L,wc,fixed,2.2,o)}}else seg(0,-t,len+t,fixed,horiz)};
+ wall('top',W,-t/2,true);wall('bottom',W,D+t/2,true);wall('left',D,-t/2,false);wall('right',D,W+t/2,false);
+ const dp={bottom:[off,D,0,1],top:[off,0,0,-1],left:[0,off,-1,0],right:[W,off,1,0]}[S.door];
+ const mat=box(roomG,S.door==='bottom'||S.door==='top'?dw:.5,.02,S.door==='bottom'||S.door==='top'?.5:dw,'#1240e0',dp[0]+dp[2]*.25,0,dp[1]+dp[3]*.25);mat.castShadow=false;
+ const el=label('입구',1);el.position.set(dp[0]+dp[2]*1.1,.3,dp[1]+dp[3]*1.1);roomG.add(el);
+ for(const c of S.cols)box(roomG,c.w,H,c.d,'#bfbab2',c.x,0,c.z);
+ const lw=label(W.toFixed(1)+' m');lw.position.set(W/2,.05,-.9);roomG.add(lw);const ld=label(D.toFixed(1)+' m');ld.position.set(-1.1,.05,D/2);roomG.add(ld);
+ const s=Math.max(W,D);sun.position.set(W*.25,s+8,D*.15);sun.target.position.set(W/2,0,D/2);const sc=sun.shadow.camera;sc.left=sc.bottom=-s*.9;sc.right=sc.top=s*.9;sc.far=s*4+30;sc.updateProjectionMatrix();
+ $('#planBtn').hidden=!S.planURL;$('#planBtn').textContent=S.showPlan?'도면 끄기':'도면 켜기';$('#wallBtn').textContent=S.high?'벽 낮추기':'벽 올리기'}
+
+/* ---------- 자동 배치 ---------- */
+const hit=(a,b)=>a[0]<b[2]&&a[2]>b[0]&&a[1]<b[3]&&a[3]>b[1];
+function grid(rect,t,gx,gz,blk){const[w,d]=sizeOf(t,{}),[x0,z0,x1,z1]=rect,nx=Math.floor((x1-x0+gx)/(w+gx)),nz=Math.floor((z1-z0+gz)/(d+gz));if(nx<1||nz<1)return[];const slx=x1-x0-(nx*w+(nx-1)*gx),slz=z1-z0-(nz*d+(nz-1)*gz);let best=[],bs=-1;
+ for(let ox=0;ox<=slx+.001;ox+=Math.max(.1,slx/8))for(let oz=0;oz<=slz+.001;oz+=Math.max(.1,slz/6)){const out=[];for(let j=0;j<nz;j++)for(let i=0;i<nx;i++){const x=x0+ox+w/2+i*(w+gx),z=z0+oz+d/2+j*(d+gz);if(blk.some(b=>hit(b,[x-w/2,z-d/2,x+w/2,z+d/2])))continue;out.push({t,x,z,r:0})}const sc=out.length*100-Math.abs(ox-slx/2)-Math.abs(oz-slz/2);if(sc>bs){bs=sc;best=out}}
+ return best}
+function autoPlan(){const{Wl,Dl,dx}=frame(),it=[],blk=[[dx-1,Dl-2.2,dx+1,Dl+1]];
+ for(const c of S.cols){const p=toLocal(c.x,c.z),m=Math.max(c.w,c.d)/2+.25;blk.push([p.x-m,p.z-m,p.x+m,p.z+m])}
+ const inside=(t,x,z,r,o)=>{const[w,d]=sizeOf(t,o,r);return x-w/2>=-.01&&x+w/2<=Wl+.01&&z-d/2>=-.01&&z+d/2<=Dl+.01};
+ const add=(t,x,z,r=0,o,free)=>{if(!inside(t,x,z,r,o))return false;const[w,d]=sizeOf(t,o,r),bb=[x-w/2,z-d/2,x+w/2,z+d/2];if(!free&&blk.some(b=>hit(b,bb)))return false;it.push({t,x,z,r,o});blk.push([bb[0]-.3,bb[1]-.3,bb[2]+.3,bb[3]+.3]);return true};
+ const G=(...a)=>{const r=grid(...a);for(const i of r){const[w,d]=sizeOf(i.t,{});blk.push([i.x-w/2-.2,i.z-d/2-.2,i.x+w/2+.2,i.z+d/2+.2])}it.push(...r)};
+ const side=dx>Wl/2?-1:1,cashX=dx+side*2.1,c=S.concept;
+ if(c==='bbq'){const K=clamp(Dl*.26,2.2,2.8),kl=snap(clamp(Wl*.55,2.4,Wl-1.6));add('kitchen',.3+kl/2,.42,0,{len:kl});const pl=snap(Wl-1.3);if(pl>1)add('partition',pl/2,K,0,{len:pl},1);add('counter',cashX,Dl-.6);G([.35,K+.6,Wl-.35,Dl-.25],'bbq4',.7,.9,blk)}
+ else if(c==='pizza'){const K=clamp(Dl*.3,2.4,3);add('oven',Wl-1.2,.9);const kl=snap(clamp(Wl*.45,1.6,Wl-3));if(kl>=1.6)add('kitchen',.3+kl/2,.42,0,{len:kl});add('counter',Wl/2,K-.35);add('counter',cashX,Dl-.6);G([.35,K+.6,Wl-.35,Dl-.25],Wl>=6?'table4':'table2',.8,.8,blk)}
+ else if(c==='cafe'){const cl=snap(clamp(Wl*.45,2.4,Wl-1.4));add('cafecounter',Wl-.35-cl/2,.92,0,{len:cl});if(Wl-.35-cl>2.8)add('sofa',1.35,.5);G([.35,2.3,Wl-.35,Dl-.25],'table2',.6,.7,blk);add('plant',.45,Dl-.45);add('plant',Wl-.45,Dl-.45)}
+ else if(c==='office'){let cx0=.6;if(Wl>=8&&Dl>=7&&add('meeting',2.25,2))cx0=4.7;for(let x=cx0;x<Wl-.5;x+=1)add('cabinet',x,.25);add('counter',cashX,Dl-.7);G([.4,1.3,Wl-.4,Dl-.3],'desk4',1.1,1.1,blk);add('sofa',clamp(dx-side*2.8,1.1,Wl-1.1),Dl-.55,Math.PI);add('plant',.45,Dl-.45);add('plant',Wl-.45,Dl-.45)}
+ else if(c==='holdem'){const bl=snap(clamp(Wl*.55,2.6,Wl-1.2));add('bar',Wl/2,1.2,0,{len:bl});add('counter',cashX,Dl-.6);G([.4,3,Wl-.4,Dl-.25],'poker',1,.9,blk);add('tv',.1,Dl*.55,Math.PI/2,null,1);add('tv',Wl-.1,Dl*.55,-Math.PI/2,null,1);add('plant',.45,Dl-.45)}
+ return it}
+
+function place(i){const c=CAT[i.t],g=new THREE.Group(),o=i.o||(c.def?{...c.def}:{});c.mk(g,o);g.position.set(i.x,0,i.z);g.rotation.y=i.r||0;g.userData={t:i.t,o};furnG.add(g);return g}
+const serial=()=>furnG.children.map(g=>({t:g.userData.t,o:g.userData.o,x:g.position.x,z:g.position.z,r:g.rotation.y}));
+function restore(L){select(null);clearG(furnG);L.forEach(place);stats()}
+let hist=[];const pushHist=()=>{hist.push(serial());if(hist.length>60)hist.shift();$('#undo').disabled=false};
+function layout(){hist=[];$('#undo').disabled=true;restore(autoPlan())}
+
+function stats(){const L=serial();let seats=0,units=0;for(const i of L){seats+=seatOf(i);if(TABLES.has(i.t))units++}const a=S.W*S.D;
+ $('#stSeats').textContent=seats;$('#stArea').textContent=a.toFixed(1);$('#stPy').textContent=(a/3.3058).toFixed(1);$('#stUnits').textContent=units;$('#stUnitsK').textContent=UNIT[S.concept]||'테이블';$('#stPer').textContent=seats?(a/seats).toFixed(1):'–';$('#warn').hidden=units>0}
+
+/* ---------- 선택·드래그 ---------- */
+let sel=null,helper=null,drag=null,down=null;
+const ray=new THREE.Raycaster(),ptr=new THREE.Vector2(),floorP=new THREE.Plane(new THREE.Vector3(0,1,0),0);
+function pick(e){const r=R.domElement.getBoundingClientRect();ptr.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(ptr,cam)}
+function floorLocal(){const p=new THREE.Vector3();return ray.ray.intersectPlane(floorP,p)?furnG.worldToLocal(p):null}
+function select(o){sel=o;if(helper){scene.remove(helper);helper.geometry.dispose();helper=null}$('#selbar').hidden=!o;if(o){helper=new THREE.BoxHelper(o,0x1240e0);scene.add(helper);$('#selName').textContent=CAT[o.userData.t].n}}
+R.domElement.addEventListener('pointerdown',e=>{pick(e);down=[e.clientX,e.clientY];const h=ray.intersectObjects(furnG.children,true);if(!h.length)return;let o=h[0].object;while(o.parent!==furnG)o=o.parent;select(o);const l=floorLocal();if(l){drag={o,dx:o.position.x-l.x,dz:o.position.z-l.z,moved:false};ctl.enabled=false;R.domElement.setPointerCapture(e.pointerId)}},{capture:true});
+R.domElement.addEventListener('pointermove',e=>{if(!drag)return;pick(e);const l=floorLocal();if(!l)return;if(!drag.moved){pushHist();drag.moved=true}drag.o.position.x=Math.round((l.x+drag.dx)*20)/20;drag.o.position.z=Math.round((l.z+drag.dz)*20)/20;helper&&helper.update()});
+R.domElement.addEventListener('pointerup',e=>{if(drag){drag=null;ctl.enabled=true;return}if(down&&Math.hypot(e.clientX-down[0],e.clientY-down[1])<5)select(null);down=null});
+const ctl=new THREE.OrbitControls(cam,R.domElement);ctl.enableDamping=true;ctl.maxPolarAngle=Math.PI*.495;ctl.minDistance=2;ctl.maxDistance=140;
+const rotSel=()=>{if(!sel)return;pushHist();sel.rotation.y+=Math.PI/2;helper.update()};
+const delSel=()=>{if(!sel)return;pushHist();const o=sel;select(null);furnG.remove(o);stats()};
+$('#rot').onclick=rotSel;$('#del').onclick=delSel;
+$('#dup').onclick=()=>{if(!sel)return;pushHist();const i={t:sel.userData.t,o:{...sel.userData.o},x:sel.position.x+.6,z:sel.position.z+.6,r:sel.rotation.y};select(place(i));stats()};
+$('#undo').onclick=()=>{if(hist.length)restore(hist.pop());$('#undo').disabled=!hist.length};
+addEventListener('keydown',e=>{if(e.target.closest('input,select'))return;if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();$('#undo').click()}else if(e.key==='r'||e.key==='R')rotSel();else if(e.key==='Delete'||e.key==='Backspace')delSel()});
+
+function setView(m){const s=Math.max(S.W,S.D)*Math.max(1,1.3/(cam.aspect||1.6));ctl.target.set(S.W/2,0,S.D/2);if(m==='top')cam.position.set(S.W/2,s*1.5+4,S.D/2+.01);else cam.position.set(S.W/2+s*.35,s*.72+2,S.D+s*.62+2);ctl.update();$$('.seg button').forEach(b=>b.classList.toggle('on',b.dataset.v===m))}
+$$('.seg button').forEach(b=>b.onclick=()=>setView(b.dataset.v));
+$('#wallBtn').onclick=()=>{S.high=!S.high;buildRoom()};
+$('#planBtn').onclick=()=>{S.showPlan=!S.showPlan;buildRoom()};
+const ro=new ResizeObserver(()=>{const w=view.clientWidth,h=view.clientHeight;if(!w||!h)return;R.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix();if(!ro.done){ro.done=1;setView('persp')}});ro.observe(view);
+(function loop(){ctl.update();R.render(scene,cam);requestAnimationFrame(loop)})();
+
+/* ---------- 입력 ---------- */
+$('#chips').innerHTML=Object.entries(CONCEPTS).map(([k,v])=>`<button role="radio" data-c="${k}">${v[0]}</button>`).join('');
+function syncChips(){$$('#chips button').forEach(b=>{const on=b.dataset.c===S.concept;b.classList.toggle('on',on);b.setAttribute('aria-checked',on)});$('#cInfo').textContent=CONCEPTS[S.concept][1]}
+$$('#chips button').forEach(b=>b.onclick=()=>{S.concept=b.dataset.c;syncChips();layout()});
+$('#addType').innerHTML=Object.entries(CAT).map(([k,c])=>`<option value="${k}">${c.n}</option>`).join('');
+$('#addBtn').onclick=()=>{const{Wl,Dl}=frame();pushHist();select(place({t:$('#addType').value,x:snap(Wl/2),z:snap(Dl/2),r:0}));stats()};
+function syncInputs(){$('#iW').value=S.W;$('#iD').value=S.D;$('#iH').value=S.H;$('#iDoor').value=S.door;$('#iOff').value=S.off;
+ $('#cols').innerHTML=S.cols.length?S.cols.map((c,i)=>`<li><span class="num">기둥 ${i+1} · x ${c.x.toFixed(1)} m, z ${c.z.toFixed(1)} m · ${c.w.toFixed(1)}×${c.d.toFixed(1)}</span><button data-i="${i}" aria-label="기둥 ${i+1} 삭제">삭제</button></li>`).join(''):'<li><span>기둥 없음</span></li>';
+ $$('#cols button').forEach(b=>b.onclick=()=>{S.cols.splice(+b.dataset.i,1);refresh()})}
+function refresh(){syncInputs();buildRoom();layout()}
+for(const id of['iW','iD','iH','iOff'])$('#'+id).addEventListener('change',()=>{const v=parseFloat($('#'+id).value);if(!isFinite(v))return syncInputs();if(id==='iW')S.W=clamp(v,3,60);if(id==='iD')S.D=clamp(v,3,60);if(id==='iH')S.H=clamp(v,2.2,8);if(id==='iOff')S.off=Math.max(0,v);refresh();if(id!=='iH'&&id!=='iOff')setView('persp')});
+$('#iDoor').onchange=()=>{S.door=$('#iDoor').value;const len=S.door==='left'||S.door==='right'?S.D:S.W;if(S.off>len)S.off=snap(len/2);refresh()};
+$('#addCol').onclick=()=>{const x=parseFloat($('#cx').value),z=parseFloat($('#cz').value);if(!isFinite(x)||!isFinite(z))return;S.cols.push({x:clamp(x,0,S.W),z:clamp(z,0,S.D),w:.6,d:.6});$('#cx').value=$('#cz').value='';refresh()};
+$('#relayout').onclick=layout;
+
+/* ---------- 파일 ---------- */
+function showMsg(t){const m=$('#fileMsg');m.textContent=t;m.hidden=!t}
+function addFiles(k,files){let pdf=0;const imgs=[...files].filter(f=>{if(f.type==='application/pdf'){pdf++;return false}return f.type.startsWith('image/')});showMsg(pdf?'PDF는 아직 읽지 못합니다. 계약서·도면을 사진이나 화면 캡처 이미지로 올려주세요.':'');if(!imgs.length)return;
+ if(k==='plan'){S.plan=imgs[0];if(S.planURL)URL.revokeObjectURL(S.planURL);S.planURL=URL.createObjectURL(imgs[0]);S.showPlan=true;buildRoom()}else S[k]=S[k].concat(imgs).slice(0,8);
+ const th=$(`.drop[data-k="${k}"] .thumbs`);th.innerHTML='';for(const f of k==='plan'?[S.plan]:S[k]){const im=document.createElement('img');im.alt='';im.src=URL.createObjectURL(f);th.appendChild(im)}$('#sampleNote').hidden=true}
+$$('.drop').forEach(d=>{const k=d.dataset.k,inp=d.querySelector('input');inp.onchange=()=>{addFiles(k,inp.files);inp.value=''};d.addEventListener('dragover',e=>{e.preventDefault();d.classList.add('over')});d.addEventListener('dragleave',()=>d.classList.remove('over'));d.addEventListener('drop',e=>{e.preventDefault();d.classList.remove('over');addFiles(k,e.dataTransfer.files)})});
+
+/* ---------- AI 분석 ---------- */
+let sample=null;
+const aiOff=t=>{$('#aiOff').textContent=t;$('#aiOff').hidden=false;$('#aiBox').hidden=true};
+if(window.claude&&claude.use){claude.use('sample').then(async s=>{if(!s)return aiOff('이 화면에서는 AI 분석을 쓸 수 없어요. 치수와 입구 위치를 직접 입력하면 바로 배치됩니다.');let ok=false;try{ok=!!(await s.limits()).images}catch(e){}if(!ok)return aiOff('이미지 분석을 쓸 수 없어 치수를 직접 입력해 주세요.');sample=s;$('#aiBox').hidden=false;$('#aiOff').hidden=true}).catch(()=>aiOff('AI 분석을 쓸 수 없어 치수를 직접 입력해 주세요.'))}else aiOff('이 화면에서는 AI 분석을 쓸 수 없어요. 치수와 입구 위치를 직접 입력하면 바로 배치됩니다.');
+async function shrink(f){const b=await createImageBitmap(f),k=Math.min(1,1568/Math.max(b.width,b.height)),c=document.createElement('canvas');c.width=Math.round(b.width*k);c.height=Math.round(b.height*k);c.getContext('2d').drawImage(b,0,0,c.width,c.height);return new Promise(r=>c.toBlob(r,'image/jpeg',.86))}
+$('#aiBtn').onclick=async()=>{if(!sample)return;const st=$('#aiStatus'),list=[],lab=[];
+ if(S.plan){list.push(S.plan);lab.push('도면')}S.photos.slice(0,5).forEach((f,i)=>{list.push(f);lab.push('철거 전 현장 사진 '+(i+1))});S.lease.slice(0,3).forEach((f,i)=>{list.push(f);lab.push('임대차계약서 '+(i+1)+'쪽')});
+ if(!list.length){st.textContent='먼저 도면, 사진, 계약서 중 하나 이상을 올려주세요.';return}
+ const btn=$('#aiBtn');btn.disabled=true;st.innerHTML='<span class="busy"></span>자료를 읽는 중입니다. 30초쯤 걸려요.';
+ const cn=CONCEPTS[S.concept][0];
+ const prompt=`당신은 한국 상가 인테리어 실측·기획 보조입니다. 첨부 이미지는 순서대로 다음과 같습니다: ${lab.map((l,i)=>`이미지${i+1}=${l}`).join(', ')}.
+목표 업종은 "${cn}"입니다. 이 자료로 매장 내부를 직사각형으로 근사해 아래 JSON 하나만 출력하세요. 설명 문장, 코드펜스 없이 JSON만.
+좌표계: 도면(없으면 사진으로 추정한 평면)의 위쪽이 top 벽. x는 왼쪽 벽에서 오른쪽으로, z는 위쪽 벽에서 아래쪽으로 잰 미터.
+{"width_m":숫자|null,"depth_m":숫자|null,"ceiling_m":숫자|null,"area_m2":숫자|null,
+"entrance":{"wall":"top|bottom|left|right","offset_m":숫자}|null,  // offset: top/bottom 벽은 왼쪽 끝부터, left/right 벽은 위쪽 끝부터 입구 중심까지
+"columns":[{"x_m":숫자,"z_m":숫자,"w_m":숫자,"d_m":숫자}],
+"lease":{"address":"","area_m2":숫자|null,"deposit":"","rent":"","use":"","term":""}|null,
+"observations":["현장 사진·도면에서 확인한 사실 3~6개(창, 배관, 전기, 바닥, 천장, 기둥 등)"],
+"advice":["${cn} 배치·공사 시 이 현장에서 특히 챙길 점 3~5개"],
+"confidence":"high|medium|low"}
+규칙: 도면 치수 표기를 최우선으로 쓰고, 없으면 계약서 전용면적과 사진 비율로 가로·세로를 추정해 observations에 "추정"이라고 밝히세요. 모르는 값은 null. 계약서의 임대인·임차인 이름, 주민등록번호, 연락처, 계좌는 절대 출력하지 마세요.`;
+ try{const imgs=await Promise.all(list.map(shrink));const r=await sample(prompt,{images:imgs,modelTier:'complex'});const m=(r.text||'').match(/\{[\s\S]*\}/);if(!m)throw{message:'parse'};apply(JSON.parse(m[0]));st.textContent='분석을 반영해 배치했습니다. 치수가 다르면 아래에서 고쳐 주세요.'}
+ catch(e){st.textContent=e&&e.code==='not_granted'?'AI 사용이 허용되지 않았어요. 치수를 직접 입력해 주세요.':e&&e.code==='rate_limited'?'요청이 많아 잠시 뒤에 다시 시도해 주세요.':'자료를 읽지 못했어요. 더 선명한 이미지로 다시 시도하거나 치수를 직접 입력해 주세요.'}
+ btn.disabled=false};
+function apply(j){if(num(j.width_m))S.W=snap(clamp(j.width_m,3,60));if(num(j.depth_m))S.D=snap(clamp(j.depth_m,3,60));
+ if(!num(j.width_m)&&num(j.area_m2)){S.W=snap(clamp(Math.sqrt(j.area_m2*1.4),3,60));S.D=snap(clamp(j.area_m2/S.W,3,60))}
+ if(num(j.ceiling_m))S.H=snap(clamp(j.ceiling_m,2.2,8));
+ if(j.entrance&&['top','bottom','left','right'].includes(j.entrance.wall)){S.door=j.entrance.wall;S.off=snap(+j.entrance.offset_m||((S.door==='left'||S.door==='right'?S.D:S.W)/2))}
+ S.cols=(Array.isArray(j.columns)?j.columns:[]).filter(c=>c&&isFinite(c.x_m)&&isFinite(c.z_m)).slice(0,20).map(c=>({x:clamp(+c.x_m,0,S.W),z:clamp(+c.z_m,0,S.D),w:clamp(+c.w_m||.6,.2,2),d:clamp(+c.d_m||.6,.2,2)}));
+ const L=j.lease;$('#leaseCard').hidden=!L;if(L){const rows=[['소재지',L.address],['전용면적',num(L.area_m2)?L.area_m2+' m²':''],['보증금',L.deposit],['월 차임',L.rent],['용도',L.use],['계약 기간',L.term]].filter(r=>r[1]);const dl=$('#lease');dl.innerHTML='';for(const[k,v]of rows){const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=k;dd.textContent=String(v);dl.append(dt,dd)}
+  const lw=$('#leaseWarn'),a=S.W*S.D;if(num(L.area_m2)&&Math.abs(a-L.area_m2)/L.area_m2>.12){lw.textContent=`계약서 면적(${L.area_m2} m²)과 배치에 쓴 면적(${a.toFixed(1)} m²)이 다릅니다. 실측으로 확인해 주세요.`;lw.hidden=false}else lw.hidden=true}
+ const fill=(id,arr)=>{const u=$(id);u.innerHTML='';for(const t of(Array.isArray(arr)?arr:[]).slice(0,8)){const li=document.createElement('li');li.textContent=String(t);u.appendChild(li)}};
+ fill('#obs',j.observations);fill('#adv',j.advice);$('#advH').textContent=CONCEPTS[S.concept][0]+' 기준 체크포인트';$('#noteCard').hidden=false;
+ refresh();setView('persp')}
+
+syncChips();syncInputs();buildRoom();layout();setView('persp');
+}
+</script>
+</body></html>
