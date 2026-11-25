@@ -85,10 +85,10 @@ h3{font-size:14px;margin:14px 0 6px}
   <section class="card">
     <h2>1. 현장 자료</h2>
     <div class="drops">
-      <label class="drop" data-k="plan"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M3 3h18v18H3zM3 12h8V3M15 21v-6h6"/></svg></span><b>도면</b><span>평면도·실측 스케치 이미지</span><input type="file" accept="image/*,application/pdf"><div class="thumbs"></div></label>
-      <label class="drop" data-k="photos"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M3 7h4l2-3h6l2 3h4v13H3z"/><circle cx="12" cy="13" r="4"/></svg></span><b>철거 전 사진</b><span>여러 장 가능 · 기둥, 창, 배관 확인용</span><input type="file" accept="image/*" multiple><div class="thumbs"></div></label>
-      <label class="drop" data-k="lease"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M6 2h9l5 5v15H6zM14 2v6h6M9 13h8M9 17h6"/></svg></span><b>계약서</b><span>임대차·매매 계약서 사진·캡처 · 면적 확인용</span><input type="file" accept="image/*,application/pdf" multiple><div class="thumbs"></div></label>
-      <label class="drop" data-k="drafts"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M3 17l6-4 4 3 8-6M3 21h18M3 3h18v14"/></svg></span><b>인테리어 시안</b><span>3D 평면도·스케치 · 이 시안대로 가구·방·창호 배치</span><input type="file" accept="image/*" multiple><div class="thumbs"></div></label>
+      <label class="drop" data-k="plan"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M3 3h18v18H3zM3 12h8V3M15 21v-6h6"/></svg></span><b>도면</b><span>평면도·실측 스케치 · 이미지 또는 PDF</span><input type="file" accept="image/*,application/pdf,.pdf"><div class="thumbs"></div></label>
+      <label class="drop" data-k="photos"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M3 7h4l2-3h6l2 3h4v13H3z"/><circle cx="12" cy="13" r="4"/></svg></span><b>철거 전 사진</b><span>여러 장 · 이미지 또는 PDF · 기둥, 창, 배관 확인용</span><input type="file" accept="image/*,application/pdf,.pdf" multiple><div class="thumbs"></div></label>
+      <label class="drop" data-k="lease"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M6 2h9l5 5v15H6zM14 2v6h6M9 13h8M9 17h6"/></svg></span><b>계약서</b><span>임대차·매매 계약서 · 이미지 또는 PDF · 면적 확인용</span><input type="file" accept="image/*,application/pdf,.pdf" multiple><div class="thumbs"></div></label>
+      <label class="drop" data-k="drafts"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M3 17l6-4 4 3 8-6M3 21h18M3 3h18v14"/></svg></span><b>인테리어 시안</b><span>3D 평면도·스케치 · 이미지 또는 PDF · 이대로 배치</span><input type="file" accept="image/*,application/pdf,.pdf" multiple><div class="thumbs"></div></label>
     </div>
     <p id="fileMsg" class="warn" hidden></p>
     <div id="aiBox" hidden><button id="aiBtn" class="primary">AI로 자료 분석하고 배치하기</button><p id="aiStatus" class="small" aria-live="polite"></p></div>
@@ -244,7 +244,7 @@ function drawHL(){if(hl){hl.parent&&hl.parent.remove(hl);hl.geometry.dispose();h
 
 function buildRoom(){clearG(roomG);const{W,D,H}=S,{off}=frame();
  let fm=M(RES.has(S.concept)?'#c9a37a':'#cfcac2',{roughness:.95});
- if(S.planURL&&S.showPlan){if(!planTex||planTex.userData.url!==S.planURL){planTex=new THREE.TextureLoader().load(S.planURL);planTex.userData.url=S.planURL}fm=new THREE.MeshStandardMaterial({map:planTex,roughness:.95})}
+ if(S.planURL&&S.showPlan){if(!planTex||planTex._url!==S.planURL){planTex=new THREE.TextureLoader().load(S.planURL);planTex._url=S.planURL}fm=new THREE.MeshStandardMaterial({map:planTex,roughness:.95})}
  const fl=new THREE.Mesh(new THREE.PlaneGeometry(W,D).rotateX(-Math.PI/2),fm);fl.position.set(W/2,0,D/2);fl.receiveShadow=true;roomG.add(fl);
  if(!(S.planURL&&S.showPlan)){const pts=[];for(let x=1;x<W;x++)pts.push(x,.004,0,x,.004,D);for(let z=1;z<D;z++)pts.push(0,.004,z,W,.004,z);const gg=new THREE.BufferGeometry();gg.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));roomG.add(new THREE.LineSegments(gg,new THREE.LineBasicMaterial({color:0x000000,transparent:true,opacity:.09})))}
  const h=S.high?H:1.1,dw=S.entry.w;WMe=[];S.ext={};for(const w of extWalls()){S.ext[w.side]=w;drawWall(roomG,w,h,'#f1f0ec',.15,WMe)}
@@ -410,11 +410,20 @@ $('#addCol').onclick=()=>{const x=parseFloat($('#cx').value),z=parseFloat($('#cz
 $('#relayout').onclick=()=>{S.design=null;S.dWalls=[];layout()};$('#reOps').onclick=()=>{S.opsAuto=true;autoOps();wsel=null;buildRoom();inspect()};
 
 /* ---------- 파일 ---------- */
-function showMsg(t){const m=$('#fileMsg');m.textContent=t;m.hidden=!t}
-function addFiles(k,files){let pdf=0;const imgs=[...files].filter(f=>{if(f.type==='application/pdf'){pdf++;return false}return f.type.startsWith('image/')});showMsg(pdf?'PDF는 아직 읽지 못합니다. 계약서·도면을 사진이나 화면 캡처 이미지로 올려주세요.':'');if(!imgs.length)return;
+function showMsg(t,info){const m=$('#fileMsg');m.textContent=t;m.hidden=!t;m.style.color=info?'var(--mut)':''}
+let pdfLib=null;const loadJS=src=>new Promise((ok,no)=>{const e=document.createElement('script');e.src=src;e.onload=ok;e.onerror=no;document.head.appendChild(e)});
+async function getPdf(){if(pdfLib)return pdfLib;const b='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';await loadJS(b+'pdf.min.js');await loadJS(b+'pdf.worker.min.js');pdfLib=window.pdfjsLib;pdfLib.GlobalWorkerOptions.workerSrc=b+'pdf.worker.min.js';return pdfLib}
+async function pdfToImages(f,max){const lib=await getPdf(),doc=await lib.getDocument({data:new Uint8Array(await f.arrayBuffer())}).promise,out=[];
+ for(let i=1;i<=Math.min(doc.numPages,max);i++){const pg=await doc.getPage(i),v0=pg.getViewport({scale:1}),v=pg.getViewport({scale:Math.min(3,1800/Math.max(v0.width,v0.height))}),c=document.createElement('canvas');c.width=Math.round(v.width);c.height=Math.round(v.height);const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);await pg.render({canvasContext:x,viewport:v}).promise;const b=await new Promise(r=>c.toBlob(r,'image/jpeg',.9));out.push(b)}
+ return{imgs:out,pages:doc.numPages}}
+async function addFiles(k,files){files=[...files];const pdfs=files.filter(f=>f.type==='application/pdf'||/\.pdf$/i.test(f.name||'')),imgs=files.filter(f=>f.type.startsWith('image/'));showMsg('');
+ if(pdfs.length){showMsg('PDF를 페이지별 이미지로 바꾸는 중…',1);const max=k==='plan'?1:k==='lease'?4:3;let cut=0,bad=0;
+  for(const p of pdfs){try{const r=await pdfToImages(p,max);imgs.push(...r.imgs);if(r.pages>max)cut=Math.max(cut,r.pages)}catch(e){bad++}}
+  showMsg(bad?'PDF를 읽지 못했어요. 암호가 걸려 있거나 손상된 파일인지 확인해 주세요.':cut?`PDF가 ${cut}쪽이라 앞 ${max}쪽만 읽었어요.`:'',!bad)}
+ if(!imgs.length)return;
  if(k==='plan'){S.plan=imgs[0];if(S.planURL)URL.revokeObjectURL(S.planURL);S.planURL=URL.createObjectURL(imgs[0]);S.showPlan=true;buildRoom()}else S[k]=S[k].concat(imgs).slice(0,8);
  const th=$(`.drop[data-k="${k}"] .thumbs`);th.innerHTML='';for(const f of k==='plan'?[S.plan]:S[k]){const im=document.createElement('img');im.alt='';im.src=URL.createObjectURL(f);th.appendChild(im)}$('#sampleNote').hidden=true}
-$$('.drop').forEach(d=>{const k=d.dataset.k,inp=d.querySelector('input');inp.onchange=()=>{addFiles(k,inp.files);inp.value=''};d.addEventListener('dragover',e=>{e.preventDefault();d.classList.add('over')});d.addEventListener('dragleave',()=>d.classList.remove('over'));d.addEventListener('drop',e=>{e.preventDefault();d.classList.remove('over');addFiles(k,e.dataTransfer.files)})});
+$$('.drop').forEach(d=>{const k=d.dataset.k,inp=d.querySelector('input');inp.onchange=()=>{const fs=[...inp.files];inp.value='';addFiles(k,fs)};d.addEventListener('dragover',e=>{e.preventDefault();d.classList.add('over')});d.addEventListener('dragleave',()=>d.classList.remove('over'));d.addEventListener('drop',e=>{e.preventDefault();d.classList.remove('over');addFiles(k,[...e.dataTransfer.files])})});
 
 /* ---------- AI 분석 ---------- */
 let sample=null;
@@ -422,7 +431,7 @@ const aiOff=t=>{$('#aiOff').textContent=t;$('#aiOff').hidden=false;$('#aiBox').h
 if(window.claude&&claude.use){claude.use('sample').then(async s=>{if(!s)return aiOff('이 화면에서는 AI 분석을 쓸 수 없어요. 치수와 입구 위치를 직접 입력하면 바로 배치됩니다.');let ok=false;try{ok=!!(await s.limits()).images}catch(e){}if(!ok)return aiOff('이미지 분석을 쓸 수 없어 치수를 직접 입력해 주세요.');sample=s;$('#aiBox').hidden=false;$('#aiOff').hidden=true}).catch(()=>aiOff('AI 분석을 쓸 수 없어 치수를 직접 입력해 주세요.'))}else aiOff('이 화면에서는 AI 분석을 쓸 수 없어요. 치수와 입구 위치를 직접 입력하면 바로 배치됩니다.');
 async function shrink(f){const b=await createImageBitmap(f),k=Math.min(1,1568/Math.max(b.width,b.height)),c=document.createElement('canvas');c.width=Math.round(b.width*k);c.height=Math.round(b.height*k);c.getContext('2d').drawImage(b,0,0,c.width,c.height);return new Promise(r=>c.toBlob(r,'image/jpeg',.86))}
 $('#aiBtn').onclick=async()=>{if(!sample)return;const st=$('#aiStatus'),list=[],lab=[];
- if(S.plan){list.push(S.plan);lab.push('도면')}S.photos.slice(0,5).forEach((f,i)=>{list.push(f);lab.push('현장 사진 '+(i+1))});S.lease.slice(0,3).forEach((f,i)=>{list.push(f);lab.push('계약서 '+(i+1)+'쪽')});S.drafts.slice(0,2).forEach((f,i)=>{list.push(f);lab.push('인테리어 시안 '+(i+1))});const hasD=S.drafts.length>0;
+ if(S.plan){list.push(S.plan);lab.push('도면')}S.photos.slice(0,5).forEach((f,i)=>{list.push(f);lab.push('현장 사진 '+(i+1))});S.lease.slice(0,4).forEach((f,i)=>{list.push(f);lab.push('계약서 '+(i+1)+'쪽')});S.drafts.slice(0,2).forEach((f,i)=>{list.push(f);lab.push('인테리어 시안 '+(i+1))});const hasD=S.drafts.length>0;
  if(!list.length){st.textContent='먼저 도면, 사진, 계약서, 시안 중 하나 이상을 올려주세요.';return}
  const btn=$('#aiBtn');btn.disabled=true;st.innerHTML='<span class="busy"></span>자료를 읽는 중입니다. 30초쯤 걸려요.';
  const cn=CONCEPTS[S.concept][0];
