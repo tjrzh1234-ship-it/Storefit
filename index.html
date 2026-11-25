@@ -96,12 +96,12 @@ h3{font-size:14px;margin:14px 0 6px}
     <div id="keyBox" hidden>
       <div class="fields" style="margin-top:14px">
         <label class="f" style="grid-column:1/-1">Claude API 키<input id="apiKey" type="password" placeholder="sk-ant-로 시작하는 키" autocomplete="off" spellcheck="false"></label>
-        <label class="f" style="grid-column:1/-1">모델<select id="apiModel"><option value="claude-sonnet-5-5">Sonnet 5.5 · 빠르고 저렴</option><option value="claude-opus-5-5">Opus 5.5 · 시안 읽기가 더 정확</option></select></label>
+        <label class="f" style="grid-column:1/-1">모델<select id="apiModel"><option value="claude-sonnet-5-5">Sonnet 5.5 · 기본 (1회 약 100원)</option><option value="claude-opus-5-5">Opus 5.5 · 시안 읽기 더 정확 (1회 약 200원)</option></select></label>
       </div>
       <label class="chk"><input type="checkbox" id="keySave"> 이 브라우저에 키 기억하기</label>
       <p class="small">키는 이 브라우저에서 Anthropic API로만 바로 보내지고, 사용한 만큼 API 요금이 나옵니다. 공용 PC에서는 기억하기를 켜지 마세요. 키는 <a id="keyLink" href="https://platform.claude.com/settings/keys">platform.claude.com</a>에서 만들 수 있어요.</p>
     </div>
-    <div id="aiBox" hidden><button id="aiBtn" class="primary">AI로 자료 분석하고 배치하기</button><p id="aiStatus" class="small" aria-live="polite"></p></div>
+    <div id="aiBox" hidden><button id="aiBtn" class="primary">AI로 자료 분석하고 배치하기</button><p id="aiStatus" class="small" aria-live="polite"></p><details id="aiRaw" class="small" hidden><summary>AI 답 원문 보기 (문제 확인용)</summary><pre id="aiRawText" style="white-space:pre-wrap;max-height:240px;overflow:auto;font-size:12px"></pre></details></div>
     <p id="aiOff" class="small">AI 연결을 확인하는 중입니다…</p>
   </section>
   <section class="card">
@@ -457,29 +457,45 @@ $('#apiModel').onchange=()=>LS.set('sps_model',$('#apiModel').value);
 if(window.claude&&claude.use){claude.use('sample').then(async s=>{if(CFG.aiProxy)return;if(!s)return useKeyMode();let ok=false;try{ok=!!(await s.limits()).images}catch(e){}if(!ok)return useKeyMode();sample=s;$('#aiBox').hidden=false;$('#aiOff').hidden=true}).catch(useKeyMode)}else useKeyMode();
 if(CFG.aiProxy){keyMode=true;$('#keyBox').hidden=true;$('#aiOff').hidden=true;$('#aiBox').hidden=false}
 const b64=b=>new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result).split(',')[1]);r.onerror=no;r.readAsDataURL(b)});
+let aiT0=0,aiChars=0,aiTimer=null;
+function aiProgress(){const st=$('#aiStatus'),sec=Math.round((Date.now()-aiT0)/1000);st.innerHTML='<span class="busy"></span>';st.append(aiChars?`결과를 받는 중이에요 · ${sec}초 · ${aiChars.toLocaleString()}자`:`자료를 보내고 AI가 읽는 중이에요 · ${sec}초`)}
 async function askAI(prompt,imgs){
- if(sample&&!keyMode&&!CFG.aiProxy){const r=await sample(prompt,{images:imgs,modelTier:'complex'});return r.text||''}
+ if(sample&&!keyMode&&!CFG.aiProxy){const r=await sample(prompt,{images:imgs,modelTier:'complex',onText:({text})=>{if(text&&!/^Thinking/.test(text))aiChars=text.length}});return r.text||''}
  const key=$('#apiKey').value.trim();if(!key&&!CFG.aiProxy)throw{code:'nokey'};
  const content=[];for(const b of imgs)content.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:await b64(b)}});content.push({type:'text',text:prompt});
- let res;try{res=await fetch(CFG.aiProxy||'https://api.anthropic.com/v1/messages',{method:'POST',headers:CFG.aiProxy?{'content-type':'application/json'}:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:$('#apiModel').value,max_tokens:8000,messages:[{role:'user',content}]})})}catch(e){throw{code:'network'}}
- let j=null;try{j=await res.json()}catch(e){}
- if(!res.ok)throw{code:res.status===401||res.status===403?'badkey':res.status===429||res.status===529?'rate_limited':'api',message:j&&j.error&&j.error.message};
- return(j.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('')}
-async function shrink(f){const b=await createImageBitmap(f),k=Math.min(1,1568/Math.max(b.width,b.height)),c=document.createElement('canvas');c.width=Math.round(b.width*k);c.height=Math.round(b.height*k);c.getContext('2d').drawImage(b,0,0,c.width,c.height);return new Promise(r=>c.toBlob(r,'image/jpeg',.86))}
+ const ac=new AbortController(),to=setTimeout(()=>ac.abort(),240000);
+ let res;try{res=await fetch(CFG.aiProxy||'https://api.anthropic.com/v1/messages',{method:'POST',signal:ac.signal,headers:CFG.aiProxy?{'content-type':'application/json'}:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:$('#apiModel').value,max_tokens:6000,stream:true,messages:[{role:'user',content}]})})}catch(e){clearTimeout(to);throw{code:ac.signal.aborted?'timeout':'network'}}
+ if(!res.ok){clearTimeout(to);let j=null;try{j=await res.json()}catch(e){}throw{code:res.status===401||res.status===403?'badkey':res.status===429||res.status===529?'rate_limited':'api',message:j&&j.error&&j.error.message}}
+ if(!/event-stream/.test(res.headers.get('content-type')||'')){clearTimeout(to);const j=await res.json();return(j.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('')}
+ const rd=res.body.getReader(),dec=new TextDecoder();let buf='',out='';
+ try{for(;;){const{done,value}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});let k;while((k=buf.indexOf('\n'))>=0){const line=buf.slice(0,k).trim();buf=buf.slice(k+1);if(!line.startsWith('data:'))continue;let ev;try{ev=JSON.parse(line.slice(5))}catch(e){continue}
+   if(ev.type==='content_block_delta'&&ev.delta&&ev.delta.type==='text_delta'){out+=ev.delta.text;aiChars=out.length}else if(ev.type==='error')throw{code:'api',message:ev.error&&ev.error.message}}}}
+ catch(e){if(e&&e.code)throw e;throw{code:ac.signal.aborted?'timeout':'network'}}finally{clearTimeout(to)}
+ return out}
+function parseAI(t){let s=String(t||'').replace(/```(?:json)?/gi,'');const a=s.indexOf('{');if(a<0)throw{code:'parse'};s=s.slice(a);
+ const scan=src=>{let o='',st=[],q=false,esc=false;for(let i=0;i<src.length;i++){const c=src[i];if(q){o+=c;if(esc)esc=false;else if(c==='\\')esc=true;else if(c==='"')q=false;continue}
+   if(c==='/'&&src[i+1]==='/'){while(i<src.length&&src[i]!=='\n')i++;continue}if(c==='/'&&src[i+1]==='*'){const e=src.indexOf('*/',i+2);i=e<0?src.length:e+1;continue}
+   if(c==='"'){q=true;o+=c;continue}if(c==='{'||c==='['){st.push(c);o+=c;continue}
+   if(c==='}'||c===']'){o=o.replace(/[\s,]+$/,'');st.pop();o+=c;if(!st.length)return{o,done:1};continue}o+=c}
+  return{o,st,q,done:0}};
+ const r=scan(s);try{return JSON.parse(r.o)}catch(e){}
+ let body=r.o;for(let n=0;n<80&&body.length>1;n++){const x=scan(body);let o=x.o;if(x.q)o+='"';o=o.replace(/[\s,:]+$/,'');if(/"[^"]*"$/.test(o)&&/[{,]\s*"[^"]*"$/.test(o))o=o.replace(/,?\s*"[^"]*"$/,'');const cl=(x.st||[]).slice().reverse().map(c=>c==='{'?'}':']').join('');try{return JSON.parse(o+cl)}catch(e){}const k=body.lastIndexOf(',');if(k<0)break;body=body.slice(0,k)}
+ throw{code:'parse'}}
+async function shrink(f){const b=await createImageBitmap(f),k=Math.min(1,(f._big?1568:1200)/Math.max(b.width,b.height)),c=document.createElement('canvas');c.width=Math.round(b.width*k);c.height=Math.round(b.height*k);c.getContext('2d').drawImage(b,0,0,c.width,c.height);return new Promise(r=>c.toBlob(r,'image/jpeg',.86))}
 $('#aiBtn').onclick=async()=>{if(!sample&&!keyMode)return;if(keyMode&&!CFG.aiProxy&&!$('#apiKey').value.trim()){$('#aiStatus').textContent='먼저 Claude API 키를 넣어 주세요.';$('#apiKey').focus();return}const st=$('#aiStatus'),list=[],lab=[];
  if(S.plan){list.push(S.plan);lab.push('도면')}S.photos.slice(0,5).forEach((f,i)=>{list.push(f);lab.push('현장 사진 '+(i+1))});S.lease.slice(0,4).forEach((f,i)=>{list.push(f);lab.push('계약서 '+(i+1)+'쪽')});S.drafts.slice(0,2).forEach((f,i)=>{list.push(f);lab.push('인테리어 시안 '+(i+1))});const hasD=S.drafts.length>0;
  if(!list.length){st.textContent='먼저 도면, 사진, 계약서, 시안 중 하나 이상을 올려주세요.';return}
- const btn=$('#aiBtn');btn.disabled=true;st.innerHTML='<span class="busy"></span>자료를 읽는 중입니다. 30초쯤 걸려요.';
+ const btn=$('#aiBtn');btn.disabled=true;window._aiRaw='';aiT0=Date.now();aiChars=0;aiProgress();clearInterval(aiTimer);aiTimer=setInterval(aiProgress,1000);
  const cn=CONCEPTS[S.concept][0];
  const prompt=`당신은 한국 상가·주거 인테리어 실측·기획 보조입니다. 첨부 이미지는 순서대로 다음과 같습니다: ${lab.map((l,i)=>`이미지${i+1}=${l}`).join(', ')}.
-목표 업종은 "${cn}"입니다. 이 자료로 매장 내부를 직사각형으로 근사해 아래 JSON 하나만 출력하세요. 설명 문장, 코드펜스 없이 JSON만.
+목표 업종은 "${cn}"입니다. 이 자료로 매장 내부를 직사각형으로 근사해 아래 JSON 하나만 출력하세요. 설명 문장, 코드펜스, 줄바꿈·들여쓰기 없이 한 줄짜리 JSON만.
 좌표계: 도면(없으면 사진으로 추정한 평면)의 위쪽이 top 벽. x는 왼쪽 벽에서 오른쪽으로, z는 위쪽 벽에서 아래쪽으로 잰 미터.
 {"width_m":숫자|null,"depth_m":숫자|null,"ceiling_m":숫자|null,"area_m2":숫자|null,
-"entrance":{"wall":"top|bottom|left|right","offset_m":숫자}|null,  // offset: top/bottom 벽은 왼쪽 끝부터, left/right 벽은 위쪽 끝부터 입구 중심까지
+"entrance":{"wall":"top|bottom|left|right","offset_m":숫자}|null,
 "columns":[{"x_m":숫자,"z_m":숫자,"w_m":숫자,"d_m":숫자}],
 "lease":{"address":"","area_m2":숫자|null,"deposit":"","rent":"","use":"","term":""}|null,
-"observations":["현장 사진·도면에서 확인한 사실 3~6개(창, 배관, 전기, 바닥, 천장, 기둥 등)"],
-"advice":["${cn} 배치·공사 시 이 현장에서 특히 챙길 점 3~5개"],
+"observations":["현장 사진·도면에서 확인한 사실 3~5개, 각 한 문장(창, 배관, 전기, 바닥, 천장, 기둥 등)"],
+"advice":["${cn} 배치·공사 시 이 현장에서 특히 챙길 점 3~4개, 각 한 문장"],
 "confidence":"high|medium|low"${hasD?`,
 "layout":{"items":[{"type":"가구 종류","x_m":숫자,"z_m":숫자,"rot_deg":0|90|180|270,"len_m":숫자|null}],
  "rooms":[{"name":"남자 화장실","x0_m":숫자,"z0_m":숫자,"x1_m":숫자,"z1_m":숫자,"door":{"wall":"top|bottom|left|right","offset_m":숫자}|null}],
@@ -489,10 +505,10 @@ ${hasD?`인테리어 시안이 있으므로 layout을 꼭 채우세요. 시안�
 - rot_deg: 가구 앞면(사람이 앉거나 서는 쪽)이 향하는 방향. 0=아래(+z), 90=오른쪽, 180=위, 270=왼쪽. 테이블은 0/180이면 긴 변이 가로, 90/270이면 긴 변이 세로. 벽에 붙는 가구는 등이 벽에 닿게.
 - rooms: 화장실·창고·사무실처럼 벽으로 막힌 방만(주방처럼 트인 곳 제외). door.offset_m은 그 방 해당 벽의 왼쪽(또는 위쪽) 끝에서 문 중심까지.
 - openings: 바깥벽의 창문·문·폴딩도어·통유리. 주 출입구는 entrance에만 쓰고 여기서 빼세요. offset_m은 entrance와 같은 기준으로 중심까지.
-`:''}${RES.has(S.concept)?"주거 공간이므로 observations에 방·욕실 개수, 발코니, 창 방향 등 평면 구성을 꼭 적고, 계약서가 매매계약서여도 lease에 면적·주소·용도를 같은 형식으로 넣으세요(가격은 deposit 자리에). ":""}규칙: 도면 치수 표기를 최우선으로 쓰고, 없으면 계약서 전용면적과 사진 비율로 가로·세로를 추정해 observations에 "추정"이라고 밝히세요. 모르는 값은 null. 계약서의 임대인·임차인 이름, 주민등록번호, 연락처, 계좌는 절대 출력하지 마세요.`;
- try{const imgs=await Promise.all(list.map(shrink));const txt=await askAI(prompt,imgs);const m=txt.match(/\{[\s\S]*\}/);if(!m)throw{message:'parse'};apply(JSON.parse(m[0]));st.textContent=S.design?`시안을 읽어 가구 ${S.design.items.length}개, 방 ${S.design.rooms.length}개를 배치했습니다. 위치가 다르면 끌어서 고쳐 주세요.`:'분석을 반영해 배치했습니다. 치수가 다르면 아래에서 고쳐 주세요.'}
- catch(e){st.textContent=e&&e.code==='badkey'?'API 키가 올바르지 않거나 권한이 없어요. 키를 다시 확인해 주세요.':e&&e.code==='network'?'Anthropic API에 연결하지 못했어요. 인터넷 연결이나 회사 방화벽을 확인해 주세요.':e&&e.code==='api'?'AI 요청이 거절됐어요'+(e.message?': '+String(e.message).slice(0,160):'.'):e&&e.code==='not_granted'?'AI 사용이 허용되지 않았어요. 치수를 직접 입력해 주세요.':e&&e.code==='rate_limited'?'요청이 많아 잠시 뒤에 다시 시도해 주세요.':'자료를 읽지 못했어요. 더 선명한 이미지로 다시 시도하거나 치수를 직접 입력해 주세요.'}
- btn.disabled=false};
+`:''}${RES.has(S.concept)?"주거 공간이므로 observations에 방·욕실 개수, 발코니, 창 방향 등 평면 구성을 꼭 적고, 계약서가 매매계약서여도 lease에 면적·주소·용도를 같은 형식으로 넣으세요(가격은 deposit 자리에). ":""}규칙: JSON 안에 주석(//)이나 설명을 넣지 마세요. entrance.offset_m은 top/bottom 벽이면 왼쪽 끝부터, left/right 벽이면 위쪽 끝부터 입구 중심까지 거리입니다. 손그림이나 옆으로 돌아간 도면이면 글자가 바로 읽히는 방향으로 돌려 놓고 그 위쪽을 top으로 삼으세요. 치수가 cm 단위면 m로 바꾸세요. 도면 치수 표기를 최우선으로 쓰고, 없으면 계약서 전용면적과 사진 비율로 가로·세로를 추정해 observations에 "추정"이라고 밝히세요. 모르는 값은 null. 계약서의 임대인·임차인 이름, 주민등록번호, 연락처, 계좌는 절대 출력하지 마세요.`;
+ try{if(S.plan)S.plan._big=1;S.drafts.forEach(f=>f._big=1);const imgs=await Promise.all(list.map(shrink));$('#aiRaw').hidden=true;const txt=await askAI(prompt,imgs);window._aiRaw=txt;const data=parseAI(txt);try{apply(data)}catch(err){throw{code:'apply',message:err&&err.message}}st.textContent=S.design?`시안을 읽어 가구 ${S.design.items.length}개, 방 ${S.design.rooms.length}개를 배치했습니다. 위치가 다르면 끌어서 고쳐 주세요.`:'분석을 반영해 배치했습니다. 치수가 다르면 아래에서 고쳐 주세요.'}
+ catch(e){clearInterval(aiTimer);if(window._aiRaw&&e&&(e.code==='parse'||e.code==='apply')){$('#aiRawText').textContent=String(window._aiRaw).slice(0,6000);$('#aiRaw').hidden=false}st.textContent=e&&e.code==='parse'?'AI 답의 형식이 깨져서 반영하지 못했어요. 한 번 더 눌러 보세요. 계속 안 되면 모델을 Opus로 바꿔 보세요.':e&&e.code==='apply'?'분석 결과를 화면에 반영하다 오류가 났어요'+(e.message?': '+String(e.message).slice(0,120):'.'):e&&e.code==='timeout'?'4분이 지나도 답이 없어 멈췄어요. 이미지 수를 줄이거나 잠시 뒤 다시 시도해 주세요.':e&&e.code==='badkey'?'API 키가 올바르지 않거나 권한이 없어요. 키를 다시 확인해 주세요.':e&&e.code==='network'?'Anthropic API에 연결하지 못했어요. 인터넷 연결이나 회사 방화벽을 확인해 주세요.':e&&e.code==='api'?'AI 요청이 거절됐어요'+(e.message?': '+String(e.message).slice(0,160):'.'):e&&e.code==='not_granted'?'AI 사용이 허용되지 않았어요. 치수를 직접 입력해 주세요.':e&&e.code==='rate_limited'?'요청이 많아 잠시 뒤에 다시 시도해 주세요.':'자료를 읽지 못했어요. 더 선명한 이미지로 다시 시도하거나 치수를 직접 입력해 주세요.'}
+ clearInterval(aiTimer);btn.disabled=false};
 function apply(j){if(num(j.width_m))S.W=snap(clamp(j.width_m,3,60));if(num(j.depth_m))S.D=snap(clamp(j.depth_m,3,60));
  if(!num(j.width_m)&&num(j.area_m2)){S.W=snap(clamp(Math.sqrt(j.area_m2*1.4),3,60));S.D=snap(clamp(j.area_m2/S.W,3,60))}
  if(num(j.ceiling_m))S.H=snap(clamp(j.ceiling_m,2.2,8));
