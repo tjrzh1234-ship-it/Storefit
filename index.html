@@ -216,6 +216,10 @@ const CAT={
  grillbooth:{n:'철판 부스(유리)',w:2.4,d:1.2,s:0,mk(g){box(g,2.4,.9,1.1,'#3a3d42',0,0,0);box(g,1.8,.04,.7,'#111',0,.9,0,{metalness:.6,roughness:.4});box(g,2.4,.6,.02,'#bcd3ff',0,.95,.55,GLASS);for(const x of[-1.19,1.19])box(g,.02,.6,1.1,'#bcd3ff',x,.95,0,GLASS)}},
  dishwasher:{n:'식기세척기',w:.65,d:.65,s:0,mk(g){box(g,.6,.85,.6,'#c9ced4',0,0,0,STEEL);box(g,.6,.6,.6,'#b9bec4',0,.9,0,STEEL)}},
  urinal:{n:'소변기',w:.4,d:.35,s:0,mk(g){box(g,.38,.65,.3,'#f7f7f5',0,.4,-.02,{roughness:.3})}},
+ range:{n:'가스레인지(화구)+후드',d:.8,s:0,def:{len:1.5},mk(g,o){const L=o.len;box(g,L,.8,.75,'#c9ced4',0,0,0,STEEL);box(g,L,.03,.78,'#1c1c1c',0,.8,0,{metalness:.4,roughness:.5});const n=Math.max(1,Math.round(L/.5));for(let i=0;i<n;i++)for(const z of[-.17,.17])cyl(g,.12,.12,.04,'#333',-L/2+L/n*(i+.5),.83,z,{metalness:.6});box(g,L+.1,.45,.85,'#b9bec4',0,1.9,0,STEEL);cyl(g,.15,.15,Math.max(.2,S.H-2.35),'#b9bec4',0,2.35,0,STEEL,12)}},
+ worktable:{n:'작업대',d:.7,s:0,def:{len:1.5},mk(g,o){const L=o.len;box(g,L,.04,.7,'#d7dbe0',0,.86,0,STEEL);box(g,L-.06,.03,.62,'#c2c7cc',0,.15,0,STEEL);for(const x of[-L/2+.04,L/2-.04])for(const z of[-.31,.31])box(g,.04,.86,.04,'#9aa0a6',x,0,z,STEEL)}},
+ ksink:{n:'주방 싱크대',d:.7,s:0,def:{len:1.5},mk(g,o){const L=o.len;box(g,L,.9,.7,'#c9ced4',0,0,0,STEEL);const n=L>=1.2?2:1;for(let i=0;i<n;i++)box(g,L/n-.2,.02,.45,'#4a5058',-L/2+L/n*(i+.5),.9,.02,{metalness:.7,roughness:.3});cyl(g,.02,.02,.35,'#9aa0a6',0,.9,-.28,STEEL,8)}},
+ fridge:{n:'업소용 냉장고',d:.8,s:0,def:{len:1.2},mk(g,o){const L=o.len;box(g,L,1.9,.78,'#d4d8dd',0,0,0,STEEL);const n=Math.max(1,Math.round(L/.6));for(let i=1;i<n;i++)box(g,.012,1.8,.012,'#8a9096',-L/2+i*L/n,.05,.395);for(let i=0;i<n;i++)box(g,.03,.4,.03,'#666',-L/2+L/n*(i+.5)+.2,1,.4)}},
  partition:{n:'구획 벽',d:.1,s:0,def:{len:3},mk(g,o){box(g,o.len,1.4,.1,'#d6d2ca',0,0,0)}}
 };
 function bedMk(g,w){box(g,w,.28,2.05,'#8a6a4e',0,0,.05);box(g,w-.08,.22,1.95,'#f4f2ee',0,.28,.05);box(g,w,.95,.08,'#6e5440',0,0,-1.03);const n=w>1.3?2:1;for(let i=0;i<n;i++)box(g,w/n-.15,.1,.35,'#ffffff',-w/2+w/n*(i+.5),.5,-.75);box(g,w-.04,.06,1.25,'#8fa3c7',0,.5,.42)}
@@ -270,6 +274,7 @@ function buildRoom(){clearG(roomG);const{W,D,H}=S,{off}=frame();
  if(!(S.planURL&&S.showPlan)){const pts=[];for(let x=1;x<W;x++)pts.push(x,.004,0,x,.004,D);for(let z=1;z<D;z++)pts.push(0,.004,z,W,.004,z);const gg=new THREE.BufferGeometry();gg.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));roomG.add(new THREE.LineSegments(gg,new THREE.LineBasicMaterial({color:0x000000,transparent:true,opacity:.09})))}
  const h=S.high?H:1.1,dw=S.entry.w;WMe=[];S.ext={};for(const w of extWalls()){S.ext[w.side]=w;drawWall(roomG,w,h,'#f1f0ec',.15,WMe)}
  for(const w of S.dWalls)drawWall(roomG,w,h,'#ecebe6',.1,WMe);
+ for(const side of['top','bottom','left','right'])for(const o of S.ops[side])if(o.label){const out=.9,p={top:[o.s,-out],bottom:[o.s,S.D+out],left:[-out,o.s],right:[S.W+out,o.s]}[side],l=label(o.label,0,.8);l.position.set(p[0],.3,p[1]);roomG.add(l)}
  if(S.design)for(const r of S.design.rooms){const rw=r.x1-r.x0,rd=r.z1-r.z0;if(/화장실|욕실/.test(r.n)){const p=new THREE.Mesh(new THREE.PlaneGeometry(rw,rd).rotateX(-Math.PI/2),M('#cdd5da',{roughness:.6}));p.position.set((r.x0+r.x1)/2,.005,(r.z0+r.z1)/2);roomG.add(p)}const l=label(r.n,0,.7);l.position.set((r.x0+r.x1)/2,.06,(r.z0+r.z1)/2);roomG.add(l)}
  const dp={bottom:[off,D,0,1],top:[off,0,0,-1],left:[0,off,-1,0],right:[W,off,1,0]}[S.door];
  const mat=box(roomG,S.door==='bottom'||S.door==='top'?dw:.5,.02,S.door==='bottom'||S.door==='top'?.5:dw,'#1240e0',dp[0]+dp[2]*.25,0,dp[1]+dp[3]*.25);mat.castShadow=false;
@@ -505,12 +510,14 @@ $('#aiBtn').onclick=async()=>{if(!sample&&!keyMode)return;if(keyMode&&!CFG.aiPro
 "confidence":"high|medium|low"${hasD?`,
 "layout":{"items":[{"type":"가구 종류","x_m":숫자,"z_m":숫자,"rot_deg":0|90|180|270,"len_m":숫자|null}],
  "rooms":[{"name":"남자 화장실","x0_m":숫자,"z0_m":숫자,"x1_m":숫자,"z1_m":숫자,"door":{"wall":"top|bottom|left|right","offset_m":숫자}|null}],
- "openings":[{"wall":"top|bottom|left|right","type":"window|door|glassdoor|folding|curtain|open","offset_m":숫자,"width_m":숫자}]}`:''}}
-${hasD?`인테리어 시안이 있으므로 layout을 꼭 채우세요. 시안이 비스듬한 3D 그림이면 바닥 평면으로 펴서 위치를 추정하고, 그림에 적힌 치수(예: 1286 x 828은 cm)를 width_m·depth_m에 쓰세요.
-- items: 시안의 가구를 하나씩. type은 다음 중 하나만: ${Object.entries(CAT).map(([k,c])=>k+'='+c.n+(c.w?'('+c.w+'×'+c.d+'m)':'(길이 len_m, 깊이 '+c.d+'m)')).join(', ')}. x_m,z_m은 가구 중심.
+ "walls":[{"x0_m":숫자,"z0_m":숫자,"x1_m":숫자,"z1_m":숫자,"door_at_m":숫자|null}],
+ "openings":[{"wall":"top|bottom|left|right","type":"window|door|glassdoor|folding|curtain|open","offset_m":숫자,"width_m":숫자,"label":"문 너머 공간 이름|null"}]}`:''}}
+${hasD?`인테리어 시안이 있으므로 layout을 꼭 채우세요. 시안·스케치에 그려지고 글씨로 적힌 것은 하나도 빠뜨리지 말고, 적힌 이름 그대로의 종류로, 그려진 위치와 크기 그대로 옮기세요. 임의로 가구를 더하거나 배치를 바꾸지 마세요. 시안이 비스듬한 3D 그림이면 바닥 평면으로 펴서 위치를 추정하고, 그림에 적힌 치수(예: 1286 x 828은 cm)를 width_m·depth_m에 쓰세요.
+- items: 시안의 가구를 하나씩. type은 다음 중 하나만: ${Object.entries(CAT).map(([k,c])=>k+'='+c.n+(c.w?'('+c.w+'×'+c.d+'m)':'(길이 len_m, 깊이 '+c.d+'m)')).join(', ')}. x_m,z_m은 가구 중심. 길이가 있는 가구는 그림에 그려진 길이를 len_m에. 주방 기구는 각각 따로: 가스렌지·화구=range, 작업대=worktable, 싱크대=ksink, 냉장고=fridge, 식기세척기=dishwasher, 숙성·음료·보온 냉장고처럼 유리문 냉장고=showcase, 선반=shelf. kitchen(통합 주방 라인)은 쓰지 마세요.
 - rot_deg: 가구 앞면(사람이 앉거나 서는 쪽)이 향하는 방향. 0=아래(+z), 90=오른쪽, 180=위, 270=왼쪽. 테이블은 0/180이면 긴 변이 가로, 90/270이면 긴 변이 세로. 벽에 붙는 가구는 등이 벽에 닿게.
-- rooms: 화장실·창고·사무실처럼 벽으로 막힌 방만(주방처럼 트인 곳 제외). door.offset_m은 그 방 해당 벽의 왼쪽(또는 위쪽) 끝에서 문 중심까지.
-- openings: 바깥벽의 창문·문·폴딩도어·통유리. 주 출입구는 entrance에만 쓰고 여기서 빼세요. offset_m은 entrance와 같은 기준으로 중심까지.
+- rooms: 매장 안에 있는, 사방이 벽으로 막힌 방(화장실·창고 등). 매장 바깥에 있는 공간은 rooms에 넣지 마세요. door.offset_m은 그 방 해당 벽의 왼쪽(또는 위쪽) 끝에서 문 중심까지.
+- walls: rooms로 표현되지 않는 매장 안의 벽·칸막이 선(주방 경계 벽, ㄱ자 칸막이 등)을 직선 하나씩. 가로선이면 z0_m=z1_m, 세로선이면 x0_m=x1_m. 벽 중간에 문이 있으면 door_at_m에 시작점(x0,z0)부터 문 중심까지 거리.
+- openings: 바깥벽의 창문·문·폴딩도어·통유리. 문 너머에 창고·화장실처럼 매장 밖 공간이 적혀 있으면 label에 그 이름. 주 출입구는 entrance에만 쓰고 여기서 빼세요. offset_m은 entrance와 같은 기준으로 중심까지.
 `:''}${RES.has(S.concept)?"주거 공간이므로 observations에 방·욕실 개수, 발코니, 창 방향 등 평면 구성을 꼭 적고, 계약서가 매매계약서여도 lease에 면적·주소·용도를 같은 형식으로 넣으세요(가격은 deposit 자리에). ":""}규칙: JSON 안에 주석(//)이나 설명을 넣지 마세요. entrance.offset_m은 top/bottom 벽이면 왼쪽 끝부터, left/right 벽이면 위쪽 끝부터 입구 중심까지 거리입니다. 손그림이나 옆으로 돌아간 도면이면 글자가 바로 읽히는 방향으로 돌려 놓고 그 위쪽을 top으로 삼으세요. 치수가 cm 단위면 m로 바꾸세요. 도면 치수 표기를 최우선으로 쓰고, 없으면 계약서 전용면적과 사진 비율로 가로·세로를 추정해 observations에 "추정"이라고 밝히세요. 모르는 값은 null. 계약서의 임대인·임차인 이름, 주민등록번호, 연락처, 계좌는 절대 출력하지 마세요.`;
  try{if(S.plan)S.plan._big=1;S.drafts.forEach(f=>f._big=1);const imgs=await Promise.all(list.map(shrink));$('#aiRaw').hidden=true;const txt=await askAI(prompt,imgs);window._aiRaw=txt;const data=parseAI(txt);try{apply(data)}catch(err){throw{code:'apply',message:err&&err.message}}st.textContent=S.design?`시안을 읽어 가구 ${S.design.items.length}개, 방 ${S.design.rooms.length}개를 배치했습니다. 위치가 다르면 끌어서 고쳐 주세요.`:'분석을 반영해 배치했습니다. 치수가 다르면 아래에서 고쳐 주세요.'}
  catch(e){clearInterval(aiTimer);if(e&&(e.code==='parse'||e.code==='apply'||e.code==='empty')){let d='';try{d=JSON.stringify(window._aiDiag||{})}catch(x){}$('#aiRawText').textContent='[진단] '+d+'\n\n'+String(window._aiRaw||'(빈 답)').slice(0,6000);$('#aiRaw').hidden=false}st.textContent=e&&e.code==='empty'?'AI가 빈 답을 보냈어요. 아래 "AI 답 원문 보기"를 캡처해서 보내주시면 원인을 찾을 수 있어요.':e&&e.code==='parse'?'AI 답의 형식이 깨져서 반영하지 못했어요. 한 번 더 눌러 보세요. 계속 안 되면 모델을 Opus로 바꿔 보세요.':e&&e.code==='apply'?'분석 결과를 화면에 반영하다 오류가 났어요'+(e.message?': '+String(e.message).slice(0,120):'.'):e&&e.code==='timeout'?'4분이 지나도 답이 없어 멈췄어요. 이미지 수를 줄이거나 잠시 뒤 다시 시도해 주세요.':e&&e.code==='badkey'?'API 키가 올바르지 않거나 권한이 없어요. 키를 다시 확인해 주세요.':e&&e.code==='network'?'Anthropic API에 연결하지 못했어요. 인터넷 연결이나 회사 방화벽을 확인해 주세요.':e&&e.code==='api'?'AI 요청이 거절됐어요'+(e.message?': '+String(e.message).slice(0,160):'.'):e&&e.code==='not_granted'?'AI 사용이 허용되지 않았어요. 치수를 직접 입력해 주세요.':e&&e.code==='rate_limited'?'요청이 많아 잠시 뒤에 다시 시도해 주세요.':'자료를 읽지 못했어요. 더 선명한 이미지로 다시 시도하거나 치수를 직접 입력해 주세요.'}
@@ -525,11 +532,14 @@ function apply(j){if(num(j.width_m))S.W=snap(clamp(j.width_m,3,60));if(num(j.dep
  const fill=(id,arr)=>{const u=$(id);u.innerHTML='';for(const t of(Array.isArray(arr)?arr:[]).slice(0,8)){const li=document.createElement('li');li.textContent=String(t);u.appendChild(li)}};
  fill('#obs',j.observations);fill('#adv',j.advice);$('#advH').textContent=CONCEPTS[S.concept][0]+' 기준 체크포인트';$('#noteCard').hidden=false;
  const sn=v=>Math.round(v*20)/20,Ly=j.layout;S.design=null;S.dWalls=[];
- if(Ly&&((Array.isArray(Ly.items)&&Ly.items.length)||(Array.isArray(Ly.rooms)&&Ly.rooms.length))){
+ if(Ly&&((Array.isArray(Ly.items)&&Ly.items.length)||(Array.isArray(Ly.rooms)&&Ly.rooms.length)||(Array.isArray(Ly.walls)&&Ly.walls.length))){
   S.design={items:(Array.isArray(Ly.items)?Ly.items:[]).filter(i=>i&&CAT[i.type]&&isFinite(i.x_m)&&isFinite(i.z_m)).slice(0,150).map(i=>({t:i.type,x:clamp(+i.x_m,0,S.W),z:clamp(+i.z_m,0,S.D),deg:+i.rot_deg||0,len:num(+i.len_m)?clamp(+i.len_m,.6,20):null})),
    rooms:(Array.isArray(Ly.rooms)?Ly.rooms:[]).filter(r=>r&&[r.x0_m,r.z0_m,r.x1_m,r.z1_m].every(v=>isFinite(v))).slice(0,12).map(r=>({n:String(r.name||'방').slice(0,14),x0:sn(clamp(Math.min(r.x0_m,r.x1_m),0,S.W)),x1:sn(clamp(Math.max(r.x0_m,r.x1_m),0,S.W)),z0:sn(clamp(Math.min(r.z0_m,r.z1_m),0,S.D)),z1:sn(clamp(Math.max(r.z0_m,r.z1_m),0,S.D)),door:r.door&&['top','bottom','left','right'].includes(r.door.wall)?{wall:r.door.wall,off:+r.door.offset_m||.6}:null})).filter(r=>r.x1-r.x0>.5&&r.z1-r.z0>.5)};
-  S.dWalls=designWalls(S.design.rooms)}
- if(Ly&&Array.isArray(Ly.openings)&&Ly.openings.length){const o={top:[],bottom:[],left:[],right:[]};for(const p of Ly.openings.slice(0,30))if(p&&o[p.wall]&&OP[p.type]&&isFinite(p.offset_m))o[p.wall].push({t:p.type,s:+p.offset_m,w:clamp(+p.width_m||OP[p.type].w,.4,30)});S.ops=o;S.opsAuto=false}
+  S.dWalls=designWalls(S.design.rooms);
+  for(const w of(Array.isArray(Ly.walls)?Ly.walls:[]).slice(0,40)){if(!w||![w.x0_m,w.z0_m,w.x1_m,w.z1_m].every(v=>isFinite(v)))continue;const x0=sn(clamp(+w.x0_m,0,S.W)),x1=sn(clamp(+w.x1_m,0,S.W)),z0=sn(clamp(+w.z0_m,0,S.D)),z1=sn(clamp(+w.z1_m,0,S.D)),h=Math.abs(x1-x0)>=Math.abs(z1-z0),a=h?Math.min(x0,x1):Math.min(z0,z1),b=h?Math.max(x0,x1):Math.max(z0,z1);if(b-a<.3)continue;
+   const st=h?(x0<=x1?x0:x1):(z0<=z1?z0:z1),ops=isFinite(w.door_at_m)&&w.door_at_m!==null&&b-a>1?[{t:'door',w:.9,s:clamp(st+(+w.door_at_m),a+.45,b-.45)}]:[];
+   S.dWalls.push({h,c:h?sn((z0+z1)/2):sn((x0+x1)/2),a,b,lo:a,hi:b,inward:1,world:1,ops})}}
+ if(Ly&&Array.isArray(Ly.openings)&&Ly.openings.length){const o={top:[],bottom:[],left:[],right:[]};for(const p of Ly.openings.slice(0,30))if(p&&o[p.wall]&&OP[p.type]&&isFinite(p.offset_m))o[p.wall].push({t:p.type,s:+p.offset_m,w:clamp(+p.width_m||OP[p.type].w,.4,30),label:p.label?String(p.label).slice(0,12):''});S.ops=o;S.opsAuto=false}
  refresh();setView('persp')}
 
 syncChips();syncInputs();buildRoom();layout();setView('persp');
