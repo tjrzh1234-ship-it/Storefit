@@ -135,6 +135,9 @@ h3{font-size:14px;margin:14px 0 6px}
       <div><div class="v num"><span id="stPer">–</span><small>m²</small></div><div class="k" id="stPerK">좌석당 면적</div></div>
     </div>
     <p class="warn" id="warn" hidden>이 크기에는 기본 테이블이 들어가지 않습니다. 치수나 입구 위치를 확인해 주세요.</p>
+    <h3>배치도 내려받기</h3>
+    <div class="row" style="margin-top:0"><button id="expPdf">PDF로 저장</button><button id="expPng">이미지(PNG)로 저장</button></div>
+    <p class="small" id="expMsg" aria-live="polite">평면 배치도, 3D 화면, 면적·좌석, 가구 목록이 담겨요. 3D 쪽은 지금 보고 있는 각도로 찍혀요.</p>
     <h3>가구 추가</h3>
     <div class="row" style="margin-top:0"><select id="addType" aria-label="추가할 가구"></select><button id="addBtn" style="flex:0 0 auto">추가</button></div>
     <p class="small" id="sampleNote">예시 공간(12 × 8 m)으로 시작합니다. 자료를 올리면 실제 현장으로 바뀝니다.</p>
@@ -437,6 +440,47 @@ $('#relayout').onclick=()=>{S.design=null;S.dWalls=[];layout()};$('#reOps').oncl
 
 /* ---------- 파일 ---------- */
 function showMsg(t,info){const m=$('#fileMsg');m.textContent=t;m.hidden=!t;m.style.color=info?'var(--mut)':''}
+/* ---------- 내보내기 ---------- */
+let dl=null;if(window.claude&&claude.use)claude.use('downloads').then(d=>{dl=d}).catch(()=>{});
+async function saveFile(name,blob){if(dl){try{await dl.save({filename:name,data:blob});return 'saved'}catch(e){if(e&&(e.code==='declined'||e.code==='rate_limited'))return e.code;if(e&&e.code==='host_unavailable')return 'host'}}
+ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},3000);return 'saved'}
+function shot(mode,w,h){const ps=new THREE.Vector2();R.getSize(ps);const pr=R.getPixelRatio();if(helper)helper.visible=false;if(hl)hl.visible=false;R.setPixelRatio(1);R.setSize(w,h,false);let c;
+ if(mode==='top'){const pad=1.4,asp=w/h;let hw=S.W/2+pad,hh=S.D/2+pad;if(hw/hh>asp)hh=hw/asp;else hw=hh*asp;c=new THREE.OrthographicCamera(-hw,hw,hh,-hh,.1,300);c.position.set(S.W/2,60,S.D/2);c.up.set(0,0,-1);c.lookAt(S.W/2,0,S.D/2)}
+ else{c=cam.clone();c.aspect=w/h;c.updateProjectionMatrix()}
+ R.setClearColor(0xffffff,1);R.render(scene,c);const u=R.domElement.toDataURL('image/jpeg',.92);R.setClearColor(0,0);R.setPixelRatio(pr);R.setSize(ps.x,ps.y,false);if(helper)helper.visible=true;if(hl)hl.visible=true;R.render(scene,cam);return u}
+const loadImg=u=>new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=u});
+function wrap(x,t,X,Y,maxW,lh,maxLines=99){const words=String(t).split(/(\s+)/);let line='',n=0;for(const w of words){const test=line+w;if(x.measureText(test).width>maxW&&line){x.fillText(line.trim(),X,Y);Y+=lh;n++;line=w.trimStart();if(n>=maxLines)return Y}else line=test}if(line.trim()){x.fillText(line.trim(),X,Y);Y+=lh}return Y}
+function summary(){const L=serial(),a=S.W*S.D,cnt={};let seats=0,units=0;for(const i of L){const c=CAT[i.t];const k=c.n+(i.o&&i.o.len?` (${(+i.o.len).toFixed(1)} m)`:'');cnt[k]=(cnt[k]||0)+1;seats+=seatOf(i);if(TABLES.has(i.t))units++}
+ const ops=[];for(const side of['top','bottom','left','right']){const w=S.ext&&S.ext[side];if(!w)continue;for(const o of w.ops)ops.push(`${SIDE[side]} 벽 · ${o.entry?'입구 ':''}${OP[o.t].n} ${o.w.toFixed(1)} m${o.label?' ('+o.label+')':''}`)}
+ const rooms=S.res?S.res.rooms.map(r=>`${r.n} ${((r.x1-r.x0)*(r.z1-r.z0)).toFixed(1)}㎡`):S.design?S.design.rooms.map(r=>`${r.n} ${((r.x1-r.x0)*(r.z1-r.z0)).toFixed(1)}㎡`):[];
+ return{a,py:a/3.3058,seats,units,cnt,ops,rooms}}
+async function buildPages(){try{await document.fonts.ready}catch(e){}const sm=summary(),PW=1754,PH=1240,brand=getComputedStyle(document.documentElement).getPropertyValue('--brand').trim()||'#1240e0',F='"Noto Sans KR",sans-serif',cn=CONCEPTS[S.concept][0],today=new Date().toLocaleDateString('ko-KR');
+ const page=(sub)=>{const c=document.createElement('canvas');c.width=PW;c.height=PH;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,PW,PH);x.fillStyle=brand;x.fillRect(0,0,PW,96);x.fillStyle='#fff';x.font=`700 40px ${F}`;x.textBaseline='middle';x.fillText(`${CFG.name} · ${sub}`,48,50);x.font=`500 24px ${F}`;x.textAlign='right';x.fillText(`${cn} · ${S.W.toFixed(2)} × ${S.D.toFixed(2)} m · ${today}`,PW-48,50);x.textAlign='left';x.textBaseline='alphabetic';
+  x.fillStyle='#5a6072';x.font=`400 20px ${F}`;x.fillText('자동·AI 배치로 만든 참고용 초안입니다. 시공 전 실측과 전문가 검토가 필요합니다.',48,PH-30);return{c,x}};
+ const kv=(x,X,Y,k,v)=>{x.fillStyle='#5a6072';x.font=`400 22px ${F}`;x.fillText(k,X,Y);x.fillStyle='#0d1020';x.font=`700 34px ${F}`;x.fillText(v,X,Y+40);return Y+92};
+ const p1=page('배치도'),plan=await loadImg(shot('top',1240,1060));p1.x.drawImage(plan,40,120,1240,1060);p1.x.strokeStyle='#dde1ea';p1.x.lineWidth=2;p1.x.strokeRect(40,120,1240,1060);
+ let Y=170,X=1320;const x1=p1.x;
+ Y=kv(x1,X,Y,'면적',`${sm.a.toFixed(1)} m² · ${sm.py.toFixed(1)}평`);
+ if(S.res){const bd=S.res.rooms.filter(r=>/^(안방|침실)/.test(r.n)).length;Y=kv(x1,X,Y,'방 / 욕실',`${bd||1}개 / ${S.res.rooms.filter(r=>r.bath).length}개`)}else{Y=kv(x1,X,Y,'좌석',`${sm.seats}석`);Y=kv(x1,X,Y,UNIT[S.concept]||'테이블',`${sm.units}개`);if(sm.seats)Y=kv(x1,X,Y,'좌석당 면적',`${(sm.a/sm.seats).toFixed(1)} m²`)}
+ Y=kv(x1,X,Y,'천장 높이',`${S.H.toFixed(1)} m`);
+ x1.fillStyle='#0d1020';x1.font=`700 24px ${F}`;x1.fillText('창호',X,Y+6);Y+=42;x1.font=`400 20px ${F}`;x1.fillStyle='#333';for(const o of sm.ops.slice(0,12))Y=wrap(x1,'· '+o,X,Y,400,30,2);
+ if(sm.rooms.length){Y+=14;x1.fillStyle='#0d1020';x1.font=`700 24px ${F}`;x1.fillText('방',X,Y);Y+=36;x1.font=`400 20px ${F}`;x1.fillStyle='#333';for(const r of sm.rooms.slice(0,10))Y=wrap(x1,'· '+r,X,Y,400,30,1)}
+ x1.fillStyle='#5a6072';x1.font=`400 18px ${F}`;wrap(x1,'위쪽이 도면의 위쪽 벽 · 바닥 격자 1칸 = 1 m',1320,1150,400,26,2);
+ const p2=page('3D 투시도 · 가구 목록'),v3=await loadImg(shot('persp',1180,800));p2.x.drawImage(v3,40,120,1180,800);p2.x.strokeStyle='#dde1ea';p2.x.lineWidth=2;p2.x.strokeRect(40,120,1180,800);
+ const x2=p2.x;X=1260;Y=160;x2.fillStyle='#0d1020';x2.font=`700 26px ${F}`;x2.fillText('가구 목록',X,Y);Y+=44;x2.font=`400 21px ${F}`;
+ const ents=Object.entries(sm.cnt).sort((a,b)=>b[1]-a[1]);for(const[k,n]of ents.slice(0,26)){x2.fillStyle='#333';x2.fillText(k,X,Y);x2.textAlign='right';x2.fillStyle='#0d1020';x2.fillText(n+'개',PW-48,Y);x2.textAlign='left';Y+=33}
+ if(ents.length>26){x2.fillStyle='#5a6072';x2.fillText(`외 ${ents.length-26}종`,X,Y);Y+=33}
+ const obs=[...$$('#obs li')].map(l=>l.textContent),adv=[...$$('#adv li')].map(l=>l.textContent);
+ if(obs.length||adv.length){let yy=960;x2.fillStyle='#0d1020';x2.font=`700 24px ${F}`;x2.fillText('AI 현장 메모',40,yy);yy+=36;x2.font=`400 19px ${F}`;x2.fillStyle='#333';for(const t of[...obs,...adv].slice(0,8)){yy=wrap(x2,'· '+t,40,yy,1180,28,2);if(yy>PH-60)break}}
+ return[p1.c,p2.c]}
+async function doExport(kind){const m=$('#expMsg'),b1=$('#expPdf'),b2=$('#expPng');b1.disabled=b2.disabled=true;m.textContent='배치도를 만드는 중이에요…';
+ try{const pages=await buildPages(),base=`${CFG.name.replace(/\s+/g,'')}_${CONCEPTS[S.concept][0]}_배치도`;let r;
+  if(kind==='png'){const blob=await new Promise(ok=>pages[0].toBlob(ok,'image/png'));r=await saveFile(base+'.png',blob)}
+  else{if(!window.jspdf)await loadJS('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');const doc=new window.jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4'});pages.forEach((c,i)=>{if(i)doc.addPage();doc.addImage(c.toDataURL('image/jpeg',.9),'JPEG',0,0,297,210)});r=await saveFile(base+'.pdf',doc.output('blob'))}
+  m.textContent=r==='saved'?'저장했어요. 다운로드 폴더를 확인해 주세요.':r==='declined'?'저장을 취소했어요.':r==='host'?'이 앱에서는 파일 저장이 안 돼요. 브라우저나 컴퓨터에서 열어 주세요.':'잠시 뒤 다시 눌러 주세요.'}
+ catch(e){m.textContent='배치도를 만들지 못했어요. 다시 눌러 주세요.'}
+ b1.disabled=b2.disabled=false}
+$('#expPdf').onclick=()=>doExport('pdf');$('#expPng').onclick=()=>doExport('png');
 let pdfLib=null;const loadJS=src=>new Promise((ok,no)=>{const e=document.createElement('script');e.src=src;e.onload=ok;e.onerror=no;document.head.appendChild(e)});
 async function getPdf(){if(pdfLib)return pdfLib;const b='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';await loadJS(b+'pdf.min.js');await loadJS(b+'pdf.worker.min.js');pdfLib=window.pdfjsLib;pdfLib.GlobalWorkerOptions.workerSrc=b+'pdf.worker.min.js';return pdfLib}
 async function pdfToImages(f,max){const lib=await getPdf(),doc=await lib.getDocument({data:new Uint8Array(await f.arrayBuffer())}).promise,out=[];
