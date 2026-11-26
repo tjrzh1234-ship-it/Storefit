@@ -64,7 +64,7 @@ h3{font-size:14px;margin:14px 0 6px}
 .seg{display:flex;border-radius:9px;overflow:hidden;border:1px solid var(--line)}
 .seg button{border:0;border-radius:0}.seg button.on{background:var(--co);color:light-dark(#fff,#0a0d18)}
 .selbar{position:absolute;left:50%;bottom:44px;transform:translateX(-50%);display:flex;gap:8px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px 6px 6px 14px;box-shadow:0 4px 16px #0003;max-width:calc(100% - 24px);flex-wrap:wrap}
-.selbar b{font-size:15px;white-space:nowrap}.sb{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}.selbar select{width:auto}.mini{display:flex;align-items:center;gap:4px;font-size:13px;color:var(--mut)}.mini input{width:72px}.tip{flex-basis:100%;text-align:center;font-size:13px;color:var(--mut)}
+.selbar b{font-size:15px;white-space:nowrap}.tools button.on{background:var(--co);color:light-dark(#fff,#0a0d18)}.drawbar{position:absolute;top:66px;left:12px;right:12px;margin:0 auto;max-width:560px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--panel);border:2px solid var(--co);border-radius:12px;padding:6px 6px 6px 14px;box-shadow:0 4px 16px #0003}.drawbar span{flex:1;font-size:15px;font-weight:700}.drawbar input{width:130px}.sb{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}.selbar select{width:auto}.mini{display:flex;align-items:center;gap:4px;font-size:13px;color:var(--mut)}.mini input{width:72px}.tip{flex-basis:100%;text-align:center;font-size:13px;color:var(--mut)}
 .hint{position:absolute;left:12px;right:12px;bottom:8px;margin:0;font-size:13px;color:var(--mut);text-align:center;pointer-events:none}
 .busy{display:inline-block;width:12px;height:12px;border:2px solid var(--co);border-right-color:transparent;border-radius:50%;animation:sp 0.8s linear infinite;vertical-align:-1px;margin-right:6px}
 @keyframes sp{to{transform:rotate(1turn)}}
@@ -79,8 +79,11 @@ h3{font-size:14px;margin:14px 0 6px}
     <button id="wallBtn">벽 올리기</button>
     <button id="planBtn" hidden>도면 끄기</button>
     <button id="undo" disabled>되돌리기</button>
+    <button id="drawWall">벽 그리기</button>
+    <button id="drawRoom">방 만들기</button>
   </div>
-  <div class="selbar" id="selbar" hidden><div id="selF" class="sb"><b id="selName"></b><button id="rot">회전</button><button id="dup">복제</button><button id="del">삭제</button></div><div id="selW" class="sb" hidden><b id="wName"></b><select id="wType" aria-label="창호 종류"></select><label class="mini">폭<input id="wWidth" type="number" step="0.1" min="0.4" aria-label="폭(m)">m</label><button id="wApply">적용</button><button id="wFull">벽 전체로</button><button id="wDel">빼기</button><span id="wTip" class="tip"></span></div></div>
+  <div class="drawbar" id="drawBar" hidden><span id="drawTxt"></span><input id="roomName" value="화장실" aria-label="방 이름" hidden><button id="drawOk" hidden>만들기</button><button id="drawCancel">그만 그리기</button></div>
+  <div class="selbar" id="selbar" hidden><div id="selF" class="sb"><b id="selName"></b><button id="rot">회전</button><button id="dup">복제</button><button id="del">삭제</button></div><div id="selW" class="sb" hidden><b id="wName"></b><select id="wType" aria-label="창호 종류"></select><label class="mini">폭<input id="wWidth" type="number" step="0.1" min="0.4" aria-label="폭(m)">m</label><button id="wApply">적용</button><button id="wFull">빈 벽 꽉 채우기</button><button id="wDel">빼기</button><span id="wTip" class="tip"></span></div></div>
   <p class="hint">가구·벽을 눌러 편집 · 가구와 창호는 끌어서 이동 · 빈 곳을 끌면 시점 회전</p>
 </section>
 <aside class="panel">
@@ -162,7 +165,7 @@ window.SPACE_CONFIG=Object.assign({name:'공간 배치 스튜디오',brand:'#124
 {
 const CFG=window.SPACE_CONFIG;document.title=CFG.name;document.getElementById('appName').textContent=CFG.name;document.documentElement.style.setProperty('--brand',CFG.brand);if(/[?&]embed=1/.test(location.search)||location.hash==='#embed')document.documentElement.classList.add('embed');
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
-const S={W:12,D:8,H:3,door:'bottom',off:6,concept:'bbq',cols:[{x:9.2,z:3.4,w:.6,d:.6}],plan:null,planURL:null,photos:[],lease:[],drafts:[],design:null,dWalls:[],showPlan:true,high:false,ops:{top:[],bottom:[],left:[],right:[]},opsAuto:true,entry:{t:'door',w:1.2}};
+const S={W:12,D:8,H:3,door:'bottom',off:6,concept:'bbq',cols:[{x:9.2,z:3.4,w:.6,d:.6}],plan:null,planURL:null,photos:[],lease:[],drafts:[],uWalls:[],uRooms:[],design:null,dWalls:[],showPlan:true,high:false,ops:{top:[],bottom:[],left:[],right:[]},opsAuto:true,entry:{t:'door',w:1.2}};
 const CONCEPTS={bbq:['고깃집','테이블마다 배기 덕트, 안쪽 주방과 구획 벽, 입구 옆 계산대'],pizza:['피자집','안쪽에 화덕과 주방 라인, 픽업 카운터, 4인·2인 테이블'],cafe:['카페','바 카운터와 에스프레소 머신, 2인 테이블 위주'],office:['사무실','회의실, 4인 데스크 묶음, 수납장, 안내 데스크와 라운지'],holdem:['홀덤펍','9인 홀덤 테이블과 딜러석, 뒷벽 바 카운터, 칩 교환 데스크, TV'],apt:['아파트','거실·주방 오픈형, 안방과 침실, 현관 옆 욕실, 방마다 가구 배치'],house:['단독주택','넓은 거실, 안방 전용 샤워실, 다용도실, 큰 주방·식당']};
 const RES=new Set(['apt','house']);
 const UNIT={office:'데스크 묶음',holdem:'게임 테이블'};
@@ -276,9 +279,9 @@ function buildRoom(){clearG(roomG);const{W,D,H}=S,{off}=frame();
  const fl=new THREE.Mesh(new THREE.PlaneGeometry(W,D).rotateX(-Math.PI/2),fm);fl.position.set(W/2,0,D/2);fl.receiveShadow=true;roomG.add(fl);
  if(!(S.planURL&&S.showPlan)){const pts=[];for(let x=1;x<W;x++)pts.push(x,.004,0,x,.004,D);for(let z=1;z<D;z++)pts.push(0,.004,z,W,.004,z);const gg=new THREE.BufferGeometry();gg.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));roomG.add(new THREE.LineSegments(gg,new THREE.LineBasicMaterial({color:0x000000,transparent:true,opacity:.09})))}
  const h=S.high?H:1.1,dw=S.entry.w;WMe=[];S.ext={};for(const w of extWalls()){S.ext[w.side]=w;drawWall(roomG,w,h,'#f1f0ec',.15,WMe)}
- for(const w of S.dWalls)drawWall(roomG,w,h,'#ecebe6',.1,WMe);
+ for(const w of[...S.dWalls,...S.uWalls])drawWall(roomG,w,h,'#ecebe6',.1,WMe);
  for(const side of['top','bottom','left','right'])for(const o of S.ops[side])if(o.label){const out=.9,p={top:[o.s,-out],bottom:[o.s,S.D+out],left:[-out,o.s],right:[S.W+out,o.s]}[side],l=label(o.label,0,.8);l.position.set(p[0],.3,p[1]);roomG.add(l)}
- if(S.design)for(const r of S.design.rooms){const rw=r.x1-r.x0,rd=r.z1-r.z0;if(/화장실|욕실/.test(r.n)){const p=new THREE.Mesh(new THREE.PlaneGeometry(rw,rd).rotateX(-Math.PI/2),M('#cdd5da',{roughness:.6}));p.position.set((r.x0+r.x1)/2,.005,(r.z0+r.z1)/2);roomG.add(p)}const l=label(r.n,0,.7);l.position.set((r.x0+r.x1)/2,.06,(r.z0+r.z1)/2);roomG.add(l)}
+ for(const r of[...(S.design?S.design.rooms:[]),...S.uRooms]){const rw=r.x1-r.x0,rd=r.z1-r.z0;if(/화장실|욕실/.test(r.n)){const p=new THREE.Mesh(new THREE.PlaneGeometry(rw,rd).rotateX(-Math.PI/2),M('#cdd5da',{roughness:.6}));p.position.set((r.x0+r.x1)/2,.005,(r.z0+r.z1)/2);roomG.add(p)}const l=label(r.n,0,.7);l.position.set((r.x0+r.x1)/2,.06,(r.z0+r.z1)/2);roomG.add(l)}
  const dp={bottom:[off,D,0,1],top:[off,0,0,-1],left:[0,off,-1,0],right:[W,off,1,0]}[S.door];
  const mat=box(roomG,S.door==='bottom'||S.door==='top'?dw:.5,.02,S.door==='bottom'||S.door==='top'?.5:dw,'#1240e0',dp[0]+dp[2]*.25,0,dp[1]+dp[3]*.25);mat.castShadow=false;
  const el=label('입구',1);el.position.set(dp[0]+dp[2]*1.1,.3,dp[1]+dp[3]*1.1);roomG.add(el);
@@ -388,33 +391,55 @@ let wType='window';
 function inspect(){const bar=$('#selbar'),w=curWall();if(wsel&&!w)wsel=null;bar.hidden=!sel&&!wsel;$('#selF').hidden=!sel;$('#selW').hidden=!wsel;if(!wsel)return;
  const op=curOp(),len=w.hi-w.lo;
  $('#wName').textContent=op?`${OP[op.t].n}${op.entry?' (입구)':''} · ${op.w.toFixed(1)} m`:`${w.side?'바깥벽 · '+SIDE[w.side]:'내벽'} · ${len.toFixed(1)} m`;
- $('#wType').value=op?op.t:wType;$('#wWidth').value=(op?op.w:Math.min(OP[wType].w,len)).toFixed(1);
+ $('#wType').value=op?op.t:wType;if(document.activeElement!==$('#wWidth'))$('#wWidth').value=(op?op.w:Math.min(OP[wType].w,len)).toFixed(1);
  $('#wApply').textContent=op?'적용':'누른 곳에 넣기';
- $('#wDel').hidden=op?!!op.entry:!!w.side;$('#wDel').textContent=op?'빼기':'벽 철거';
+ $('#wDel').hidden=op?!!op.entry:!!w.side;$('#wDel').textContent=op?'빼기':w.room?`'${w.room.n}' 방 지우기`:'벽 철거';if(!op&&w.room)$('#wName').textContent=`${w.room.n} 벽 · ${len.toFixed(1)} m`;
  $('#wTip').textContent=op?'창호를 끌어서 벽을 따라 옮길 수 있어요':'종류와 폭을 고르고 넣으세요'}
 function rebuildWalls(w){if(w.side||w.world)buildRoom();else buildInterior();inspect()}
-function putOp(w,nop){S.opsAuto=w.side?false:S.opsAuto;const list=w.side?S.ops[w.side]:w.ops;const keep=list.filter(o=>o===nop||Math.abs(o.s-nop.s)>=(o.w+nop.w)/2-.001);if(!keep.includes(nop))keep.push(nop);list.length=0;list.push(...keep);return nop}
-function applyOp(full){const w=curWall();if(!w)return;const op=curOp(),len=w.hi-w.lo;let t=$('#wType').value,wd=clamp(parseFloat($('#wWidth').value)||OP[t].w,.4,len),sc=full?(w.lo+w.hi)/2:null;if(full)wd=len;
- if(op&&op.entry){S.entry={t,w:wd};if(full)S.off=sc;syncInputs();buildRoom();wsel.op='entry'}
- else if(op){op.t=t;op.w=wd;if(full)op.s=sc;op.s=clamp(op.s,w.lo+wd/2,w.hi-wd/2);putOp(w,op);rebuildWalls(w)}
- else{const s=full?sc:clamp(wsel.s??(w.lo+w.hi)/2,w.lo+wd/2,w.hi-wd/2);const n=putOp(w,{t,w:wd,s});wsel.op=n;rebuildWalls(w)}
- if(full&&w.side&&w.side===S.door&&!(op&&op.entry))wsel.op=curOp()?wsel.op:null;inspect();drawHL()}
+function gapAt(w,self,s){const iv=w.ops.filter(o=>o!==self).map(o=>[o.s-o.w/2,o.s+o.w/2]).sort((a,b)=>a[0]-b[0]),gaps=[];let cur=w.lo;for(const[a,b]of iv){if(a>cur)gaps.push([cur,a]);cur=Math.max(cur,b)}if(w.hi>cur)gaps.push([cur,w.hi]);
+ let best=null,bd=1e9;for(const g of gaps){const d=s<g[0]?g[0]-s:s>g[1]?s-g[1]:0;if(d<bd){bd=d;best=g}}return best}
+function fitOp(w,self,s,wd,full){const g=gapAt(w,self,s);if(!g||g[1]-g[0]<.4)return null;if(full)return{s:(g[0]+g[1])/2,w:g[1]-g[0]};const ww=Math.min(wd,g[1]-g[0]);return{s:clamp(s,g[0]+ww/2,g[1]-ww/2),w:ww}}
+function applyOp(full){const w=curWall();if(!w)return;const op=curOp(),len=w.hi-w.lo;let t=$('#wType').value,wd=clamp(parseFloat($('#wWidth').value)||OP[t].w,.4,len);
+ const f=fitOp(w,op,op?op.s:(wsel.s??(w.lo+w.hi)/2),wd,full);if(!f){$('#wTip').textContent='이 자리에는 빈 벽이 부족해요. 옆 창호를 줄이거나 옮겨 주세요.';return}
+ if(op&&op.entry){S.entry={t,w:f.w};S.off=f.s;syncInputs();buildRoom();wsel.op='entry'}
+ else if(op){op.t=t;op.w=f.w;op.s=f.s;if(w.side)S.opsAuto=false;rebuildWalls(w)}
+ else{const n={t,w:f.w,s:f.s};(w.side?S.ops[w.side]:w.ops).push(n);if(w.side)S.opsAuto=false;wsel.op=n;rebuildWalls(w)}
+ inspect();drawHL();if(f.w<wd-.01&&!full)$('#wTip').textContent=`옆 창호와 겹치지 않게 ${f.w.toFixed(1)} m까지만 늘렸어요`}
 
-R.domElement.addEventListener('pointerdown',e=>{pick(e);down=[e.clientX,e.clientY];const h=ray.intersectObjects([...furnG.children,...WMe,...WMi],true);if(!h.length)return;const hit0=h[0];if(hit0.object.userData&&hit0.object.userData.w){const ud=hit0.object.userData,w=ud.w,P=(w.side||w.world)?hit0.point.clone():intG.worldToLocal(hit0.point.clone());down=null;selectWall({side:w.side,iw:w.side?null:w,op:ud.op?(ud.op.entry?'entry':ud.op):null,s:w.h?P.x:P.z});if(ud.op){wdrag={w,moved:false};ctl.enabled=false;R.domElement.setPointerCapture(e.pointerId)}return}let o=hit0.object;while(o.parent!==furnG)o=o.parent;select(o);const l=floorLocal();if(l){drag={o,dx:o.position.x-l.x,dz:o.position.z-l.z,moved:false};ctl.enabled=false;R.domElement.setPointerCapture(e.pointerId)}},{capture:true});
-let wdrag=null;
-R.domElement.addEventListener('pointermove',e=>{if(wdrag){pick(e);const p=new THREE.Vector3();if(!ray.ray.intersectPlane(floorP,p))return;const w=curWall(),op=curOp();if(!w||!op)return;const P=(w.side||w.world)?p:intG.worldToLocal(p),sv=Math.round(clamp(w.h?P.x:P.z,w.lo+op.w/2,w.hi-op.w/2)*20)/20;if(Math.abs(sv-op.s)<.01)return;wdrag.moved=true;if(op.entry)S.off=sv;else{op.s=sv;if(w.side)S.opsAuto=false}rebuildWalls(w);drawHL();return}if(!drag)return;pick(e);const l=floorLocal();if(!l)return;if(!drag.moved){pushHist();drag.moved=true}drag.o.position.x=Math.round((l.x+drag.dx)*20)/20;drag.o.position.z=Math.round((l.z+drag.dz)*20)/20;helper&&helper.update()});
-R.domElement.addEventListener('pointerup',e=>{if(wdrag){const m=wdrag.moved,en=curOp()&&curOp().entry;wdrag=null;ctl.enabled=true;if(m&&en)syncInputs();return}if(drag){drag=null;ctl.enabled=true;return}if(down&&Math.hypot(e.clientX-down[0],e.clientY-down[1])<5){select(null);selectWall(null)}down=null});
+R.domElement.addEventListener('pointerdown',e=>{pick(e);down=[e.clientX,e.clientY];if(drawMode)return;const h=ray.intersectObjects([...furnG.children,...WMe,...WMi],true);if(!h.length)return;const hit0=h[0];if(hit0.object.userData&&hit0.object.userData.w){const ud=hit0.object.userData,w=ud.w,P=(w.side||w.world)?hit0.point.clone():intG.worldToLocal(hit0.point.clone());down=null;selectWall({side:w.side,iw:w.side?null:w,op:ud.op?(ud.op.entry?'entry':ud.op):null,s:w.h?P.x:P.z});if(!w.side&&!ud.op){wType='door';inspect()}if(ud.op){wdrag={w,moved:false};ctl.enabled=false;R.domElement.setPointerCapture(e.pointerId)}return}let o=hit0.object;while(o.parent!==furnG)o=o.parent;select(o);const l=floorLocal();if(l){drag={o,dx:o.position.x-l.x,dz:o.position.z-l.z,moved:false};ctl.enabled=false;R.domElement.setPointerCapture(e.pointerId)}},{capture:true});
+let wdrag=null,drawMode=null,dPts=[],ghost=null;
+function setDraw(m){drawMode=m;dPts=[];clearGhost();if(m){select(null);selectWall(null)}$('#drawBar').hidden=!m;$('#roomName').hidden=$('#drawOk').hidden=true;$('#drawWall').classList.toggle('on',m==='wall');$('#drawRoom').classList.toggle('on',m==='room');drawTxt()}
+function drawTxt(){$('#drawTxt').textContent=!drawMode?'':drawMode==='wall'?(dPts.length?'벽 끝점을 누르세요':'벽 시작점을 바닥에서 누르세요'):(dPts.length===2?'방 이름을 정하고 만들기를 누르세요':dPts.length?'반대쪽 모서리를 누르세요':'방의 한쪽 모서리를 바닥에서 누르세요')}
+function snapPt(p){const xs=[0,S.W],zs=[0,S.D];for(const w of[...S.dWalls,...S.uWalls]){if(w.h){zs.push(w.c);xs.push(w.a,w.b)}else{xs.push(w.c);zs.push(w.a,w.b)}}const sn=(v,arr)=>{let b=null,d=.3;for(const a of arr){const dd=Math.abs(a-v);if(dd<d){d=dd;b=a}}return b??Math.round(v*20)/20};return{x:clamp(sn(p.x,xs),0,S.W),z:clamp(sn(p.z,zs),0,S.D)}}
+function floorPt(e){pick(e);const p=new THREE.Vector3();return ray.ray.intersectPlane(floorP,p)?snapPt(p):null}
+function wallFrom(a,b){const h=Math.abs(b.x-a.x)>=Math.abs(b.z-a.z),lo=h?Math.min(a.x,b.x):Math.min(a.z,b.z),hi=h?Math.max(a.x,b.x):Math.max(a.z,b.z);return{h,c:h?a.z:a.x,a:lo,b:hi,lo,hi,inward:1,world:1,user:1,ops:[]}}
+function clearGhost(){if(ghost){scene.remove(ghost);ghost.traverse(o=>{o.geometry&&o.geometry.dispose()});ghost=null}}
+function showGhost(a,b){clearGhost();const g=new THREE.Group(),mat=new THREE.MeshBasicMaterial({color:0x1240e0,transparent:true,opacity:.45});
+ if(drawMode==='wall'){const w=wallFrom(a,b),L=Math.max(.05,w.b-w.a),m=new THREE.Mesh(new THREE.BoxGeometry(w.h?L:.12,1.2,w.h?.12:L),mat);m.position.set(w.h?(w.a+w.b)/2:w.c,.6,w.h?w.c:(w.a+w.b)/2);g.add(m);const l=label(L.toFixed(2)+' m',1,.8);l.position.set(m.position.x,1.5,m.position.z);g.add(l)}
+ else{const x0=Math.min(a.x,b.x),x1=Math.max(a.x,b.x),z0=Math.min(a.z,b.z),z1=Math.max(a.z,b.z),m=new THREE.Mesh(new THREE.BoxGeometry(Math.max(.05,x1-x0),.05,Math.max(.05,z1-z0)),mat);m.position.set((x0+x1)/2,.03,(z0+z1)/2);g.add(m);const l=label(`${(x1-x0).toFixed(2)} × ${(z1-z0).toFixed(2)} m`,1,.8);l.position.set((x0+x1)/2,.4,(z0+z1)/2);g.add(l)}
+ ghost=g;scene.add(g)}
+function drawClick(e){const p=floorPt(e);if(!p)return;
+ if(drawMode==='wall'){if(!dPts.length){dPts=[p];showGhost(p,p)}else{const w=wallFrom(dPts[0],p);if(w.b-w.a>=.3){S.uWalls.push(w);buildRoom()}dPts=[];clearGhost()}}
+ else if(dPts.length<2){dPts.push(p);if(dPts.length===1)showGhost(p,p);else{showGhost(dPts[0],p);$('#roomName').hidden=$('#drawOk').hidden=false;$('#roomName').focus();$('#roomName').select()}}
+ drawTxt()}
+function makeRoom(){if(dPts.length<2)return;const[a,b]=dPts,r={n:($('#roomName').value.trim()||'방').slice(0,14),x0:Math.min(a.x,b.x),x1:Math.max(a.x,b.x),z0:Math.min(a.z,b.z),z1:Math.max(a.z,b.z),door:null};
+ if(r.x1-r.x0<.6||r.z1-r.z0<.6){$('#drawTxt').textContent='방이 너무 작아요. 다시 그려 주세요.';dPts=[];clearGhost();$('#roomName').hidden=$('#drawOk').hidden=true;return}
+ S.uRooms.push(r);for(const w of designWalls([r])){w.user=1;w.room=r;S.uWalls.push(w)}dPts=[];clearGhost();$('#roomName').hidden=$('#drawOk').hidden=true;buildRoom();$('#drawTxt').textContent=`'${r.n}'을 만들었어요. 문은 벽을 눌러 넣으세요. 계속 그리거나 그만 그리기를 누르세요.`}
+$('#drawWall').onclick=()=>setDraw(drawMode==='wall'?null:'wall');$('#drawRoom').onclick=()=>setDraw(drawMode==='room'?null:'room');$('#drawCancel').onclick=()=>setDraw(null);$('#drawOk').onclick=makeRoom;
+R.domElement.addEventListener('pointermove',e=>{if(drawMode){if(dPts.length===1){const p=floorPt(e);if(p)showGhost(dPts[0],p)}return}if(wdrag){pick(e);const p=new THREE.Vector3();if(!ray.ray.intersectPlane(floorP,p))return;const w=curWall(),op=curOp();if(!w||!op)return;const P=(w.side||w.world)?p:intG.worldToLocal(p),g=gapAt(w,op,op.s)||[w.lo,w.hi],sv=Math.round(clamp(w.h?P.x:P.z,g[0]+op.w/2,g[1]-op.w/2)*20)/20;if(Math.abs(sv-op.s)<.01)return;wdrag.moved=true;if(op.entry)S.off=sv;else{op.s=sv;if(w.side)S.opsAuto=false}rebuildWalls(w);drawHL();return}if(!drag)return;pick(e);const l=floorLocal();if(!l)return;if(!drag.moved){pushHist();drag.moved=true}drag.o.position.x=Math.round((l.x+drag.dx)*20)/20;drag.o.position.z=Math.round((l.z+drag.dz)*20)/20;helper&&helper.update()});
+R.domElement.addEventListener('pointerup',e=>{if(drawMode){if(down&&Math.hypot(e.clientX-down[0],e.clientY-down[1])<5)drawClick(e);down=null;return}if(wdrag){const m=wdrag.moved,en=curOp()&&curOp().entry;wdrag=null;ctl.enabled=true;if(m&&en)syncInputs();return}if(drag){drag=null;ctl.enabled=true;return}if(down&&Math.hypot(e.clientX-down[0],e.clientY-down[1])<5){select(null);selectWall(null)}down=null});
 const ctl=new THREE.OrbitControls(cam,R.domElement);ctl.enableDamping=true;ctl.maxPolarAngle=Math.PI*.495;ctl.minDistance=2;ctl.maxDistance=140;
 const rotSel=()=>{if(!sel)return;pushHist();sel.rotation.y+=Math.PI/2;helper.update()};
 const delSel=()=>{if(!sel)return;pushHist();const o=sel;select(null);furnG.remove(o);stats()};
 $('#rot').onclick=rotSel;$('#del').onclick=delSel;
 $('#wType').innerHTML=Object.entries(OP).map(([k,v])=>`<option value="${k}">${v.n}</option>`).join('');
 $('#wType').onchange=()=>{const t=$('#wType').value,op=curOp();if(op){const prev=OP[op.t].w;if(Math.abs(op.w-prev)<.01)$('#wWidth').value=OP[t].w;applyOp(false)}else{wType=t;$('#wWidth').value=Math.min(OP[t].w,curWall().hi-curWall().lo).toFixed(1)}};
-$('#wApply').onclick=()=>applyOp(false);$('#wFull').onclick=()=>applyOp(true);
-$('#wDel').onclick=()=>{const w=curWall();if(!w)return;const op=curOp();if(op&&!op.entry){const list=w.side?S.ops[w.side]:w.ops;list.splice(list.indexOf(op),1);if(w.side)S.opsAuto=false;wsel.op=null;rebuildWalls(w)}else if(!op&&!w.side){const wl=w.world?S.dWalls:S.res.walls;wl.splice(wl.indexOf(w),1);wsel=null;w.world?buildRoom():buildInterior()}inspect();drawHL()};
+$('#wApply').onclick=()=>applyOp(false);
+$('#wWidth').addEventListener('input',()=>{const v=parseFloat($('#wWidth').value);if(curOp()&&isFinite(v)&&v>=.4)applyOp(false)});$('#wWidth').addEventListener('change',()=>inspect());$('#wFull').onclick=()=>applyOp(true);
+$('#wDel').onclick=()=>{const w=curWall();if(!w)return;const op=curOp();if(op&&!op.entry){const list=w.side?S.ops[w.side]:w.ops;list.splice(list.indexOf(op),1);if(w.side)S.opsAuto=false;wsel.op=null;rebuildWalls(w)}else if(!op&&!w.side){if(w.room){const rm=w.room;S.uRooms.splice(S.uRooms.indexOf(rm),1);S.uWalls=S.uWalls.filter(x=>x.room!==rm)}else{const wl=w.user?S.uWalls:w.world?S.dWalls:S.res.walls;wl.splice(wl.indexOf(w),1)}wsel=null;w.world?buildRoom():buildInterior()}inspect();drawHL()};
 $('#dup').onclick=()=>{if(!sel)return;pushHist();const i={t:sel.userData.t,o:{...sel.userData.o},x:sel.position.x+.6,z:sel.position.z+.6,r:sel.rotation.y};select(place(i));stats()};
 $('#undo').onclick=()=>{if(hist.length)restore(hist.pop());$('#undo').disabled=!hist.length};
-addEventListener('keydown',e=>{if(e.target.closest('input,select'))return;if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();$('#undo').click()}else if(e.key==='r'||e.key==='R')rotSel();else if(e.key==='Delete'||e.key==='Backspace'){if(wsel){if(!$('#wDel').hidden)$('#wDel').click()}else delSel()}});
+addEventListener('keydown',e=>{if(e.key==='Escape'&&drawMode){setDraw(null);return}if(e.key==='Enter'&&e.target.id==='roomName'){makeRoom();return}if(e.target.closest('input,select'))return;if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();$('#undo').click()}else if(e.key==='r'||e.key==='R')rotSel();else if(e.key==='Delete'||e.key==='Backspace'){if(wsel){if(!$('#wDel').hidden)$('#wDel').click()}else delSel()}});
 
 function setView(m){const s=Math.max(S.W,S.D)*Math.max(1,1.3/(cam.aspect||1.6));ctl.target.set(S.W/2,0,S.D/2);if(m==='top')cam.position.set(S.W/2,s*1.5+4,S.D/2+.01);else cam.position.set(S.W/2+s*.35,s*.72+2,S.D+s*.62+2);ctl.update();$$('.seg button').forEach(b=>b.classList.toggle('on',b.dataset.v===m))}
 $$('.seg button').forEach(b=>b.onclick=()=>setView(b.dataset.v));
@@ -452,7 +477,7 @@ const loadImg=u=>new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=u})
 function wrap(x,t,X,Y,maxW,lh,maxLines=99){const words=String(t).split(/(\s+)/);let line='',n=0;for(const w of words){const test=line+w;if(x.measureText(test).width>maxW&&line){x.fillText(line.trim(),X,Y);Y+=lh;n++;line=w.trimStart();if(n>=maxLines)return Y}else line=test}if(line.trim()){x.fillText(line.trim(),X,Y);Y+=lh}return Y}
 function summary(){const L=serial(),a=S.W*S.D,cnt={};let seats=0,units=0;for(const i of L){const c=CAT[i.t];const k=c.n+(i.o&&i.o.len?` (${(+i.o.len).toFixed(1)} m)`:'');cnt[k]=(cnt[k]||0)+1;seats+=seatOf(i);if(TABLES.has(i.t))units++}
  const ops=[];for(const side of['top','bottom','left','right']){const w=S.ext&&S.ext[side];if(!w)continue;for(const o of w.ops)ops.push(`${SIDE[side]} 벽 · ${o.entry?'입구 ':''}${OP[o.t].n} ${o.w.toFixed(1)} m${o.label?' ('+o.label+')':''}`)}
- const rooms=S.res?S.res.rooms.map(r=>`${r.n} ${((r.x1-r.x0)*(r.z1-r.z0)).toFixed(1)}㎡`):S.design?S.design.rooms.map(r=>`${r.n} ${((r.x1-r.x0)*(r.z1-r.z0)).toFixed(1)}㎡`):[];
+ const rooms=[...(S.res?S.res.rooms:S.design?S.design.rooms:[]),...S.uRooms].map(r=>`${r.n} ${((r.x1-r.x0)*(r.z1-r.z0)).toFixed(1)}㎡`);
  return{a,py:a/3.3058,seats,units,cnt,ops,rooms}}
 async function buildPages(){try{await document.fonts.ready}catch(e){}const sm=summary(),PW=1754,PH=1240,brand=getComputedStyle(document.documentElement).getPropertyValue('--brand').trim()||'#1240e0',F='"Noto Sans KR",sans-serif',cn=CONCEPTS[S.concept][0],today=new Date().toLocaleDateString('ko-KR');
  const page=(sub)=>{const c=document.createElement('canvas');c.width=PW;c.height=PH;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,PW,PH);x.fillStyle=brand;x.fillRect(0,0,PW,96);x.fillStyle='#fff';x.font=`700 40px ${F}`;x.textBaseline='middle';x.fillText(`${CFG.name} · ${sub}`,48,50);x.font=`500 24px ${F}`;x.textAlign='right';x.fillText(`${cn} · ${S.W.toFixed(2)} × ${S.D.toFixed(2)} m · ${today}`,PW-48,50);x.textAlign='left';x.textBaseline='alphabetic';
